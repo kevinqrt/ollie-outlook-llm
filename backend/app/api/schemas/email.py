@@ -6,8 +6,7 @@ class EmailAnalyzeRequest(BaseModel):
         json_schema_extra={
             "example": {
                 "text": (
-                    "Ist am Samstag Uni?\n"
-                    "Regulaere Lehrveranstaltungen finden nur montags bis freitags statt."
+                    "Guten Tag Herr Mustermann, ist am Samstag Uni? Mit Freundlichen Grüßen Malte"
                 ),
             }
         }

@@ -30,3 +30,14 @@ just backend-server
 ```
 
 Die API ist danach unter `http://127.0.0.1:8000` erreichbar. Dokumentation der Schnittstellen kann unter: `http://127.0.0.1:8000/docs` gefunden werden.
+
+## Lokales LLM
+
+Die E-Mail-Verarbeitung nutzt einen lokalen Ollama-Endpunkt.
+
+Am einfachsten mit dem Script:
+
+```bash
+./backend/scripts/start_ollama_docker.sh
+```
+

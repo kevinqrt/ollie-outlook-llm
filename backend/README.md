@@ -40,4 +40,3 @@ Am einfachsten mit dem Script:
 ```bash
 ./backend/scripts/start_ollama_docker.sh
 ```
-

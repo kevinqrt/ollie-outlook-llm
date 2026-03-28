@@ -23,7 +23,8 @@ class EmailAnalyzeResponse(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "text": "Guten Tag,\n\nNein, regulaere Lehrveranstaltungen finden nur montags bis freitags statt.\n\nViele Gruesse",
+                "text": "Guten Tag,\n\nNein, regulaere Lehrveranstaltungen finden nur montags bis"
+                "freitags statt.\n\nViele Gruesse",
             }
         }
     )

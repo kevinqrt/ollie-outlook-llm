@@ -4,7 +4,6 @@ from ollama import ChatResponse, chat
 
 from app.api.schemas.email import EmailAnalyzeRequest, EmailAnalyzeResponse
 
-
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
 
@@ -31,7 +30,7 @@ def _generate_reply(email_text: str) -> str:
                 }
             ],
         )
-        text = response.message.content.strip()
+        text = response.message.content
         if not text:
             raise ValueError("Ollama returned no text.")
         return text

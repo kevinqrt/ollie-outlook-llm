@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.schemas.rag import RagIngestRequest, RagIngestResponse, RagRetrieveResponse
-
+from app.api.schemas.rag import RagIngestResponse, RagRetrieveResponse
 
 router = APIRouter(prefix="/api/rag")
 
@@ -10,13 +9,10 @@ router = APIRouter(prefix="/api/rag")
     "/ingest",
     response_model=RagIngestResponse,
     summary="RAG-Wissen ingestieren",
-    description="Nimmt Freitext fuer die spaetere Befuellung des RAG-Vector-Stores entgegen.",
     response_description="Status der Ingest-Anfrage.",
     responses={501: {"description": "Noch nicht implementiert."}},
 )
-async def ingest_rag_knowledge(
-    payload: RagIngestRequest,
-) -> RagIngestResponse:
+async def ingest_rag_knowledge() -> RagIngestResponse:
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="RAG ingest is not implemented yet.",
@@ -31,8 +27,7 @@ async def ingest_rag_knowledge(
     response_description="Gefundene Textstellen.",
     responses={501: {"description": "Noch nicht implementiert."}},
 )
-async def retrieve_rag_context(
-) -> RagRetrieveResponse:
+async def retrieve_rag_context() -> RagRetrieveResponse:
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="RAG retrieval is not implemented yet.",

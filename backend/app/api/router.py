@@ -1,10 +1,32 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 
-from app.api.routes.email import router as email_router
-from app.api.routes.health import router as health_router
-from app.api.routes.rag import router as rag_router
+from app.api.schemas.email_schema import EmailSuggestionRequestSchema, EmailSuggestionResponseSchema
+from app.services.llm_service import LlmService, LlmServiceError
 
 api_router = APIRouter()
-api_router.include_router(health_router, tags=["health"])
-api_router.include_router(email_router, tags=["email"])
-api_router.include_router(rag_router, tags=["rag"])
+
+
+@api_router.get("/health", summary="Health check", tags=["health"])
+async def health_check() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@api_router.post(
+    "/email/suggestion",
+    response_model=EmailSuggestionResponseSchema,
+    summary="Antwortvorschlag generieren",
+    tags=["email"],
+    description="Liest eine E-Mail ein und erzeugt einen passenden Antwortvorschlag.",
+)
+async def get_email_suggestion(
+    payload: EmailSuggestionRequestSchema,
+) -> EmailSuggestionResponseSchema:
+    service = LlmService()
+    try:
+        reply_text = await service.generate_suggestion(payload.email_content)
+        return EmailSuggestionResponseSchema(suggested_reply=reply_text)
+    except LlmServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc

@@ -12,8 +12,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 brew install just
 ```
 
-Falls `uv` danach noch nicht gefunden wird, oeffne ein neues Terminal und versuche es erneut.
-
 ## Projekt einrichten
 
 ```bash
@@ -23,20 +21,24 @@ uv sync
 
 ## Anwendung starten
 
-Wenn du den Start als Kurzkommando haben willst, gibt es im Projekt-Root ein `justfile`.
-
 ```bash
 just backend-server
 ```
 
-Die API ist danach unter `http://127.0.0.1:8000` erreichbar. Dokumentation der Schnittstellen kann unter: `http://127.0.0.1:8000/docs` gefunden werden.
+Die API ist danach unter `http://127.0.0.1:8000` erreichbar. Die Dokumentation findest du unter `http://127.0.0.1:8000/docs`.
 
-## Lokales LLM
+## Universal RAG Client generieren
 
-Die E-Mail-Verarbeitung nutzt einen lokalen Ollama-Endpunkt.
+Der API-Client für den externen RAG-Service wird automatisch aus der `openapi.json` im Verzeichnis `app/clients/universal_rag/` generiert. Die Spezifikation stammt aus dem Repository [universal-rag-service](https://github.com/detti97/universal-rag-service).
 
-Am einfachsten mit dem Script:
+Um den Client zu aktualisieren:
 
 ```bash
-./backend/scripts/start_ollama_docker.sh
+just generate-rag-client
 ```
+
+Dies nutzt `openapi-python-client`, um den Code in `app/clients/universal_rag` zu überschreiben.
+
+## Konfiguration
+
+Die URL des externen RAG-Services kann über die Umgebungsvariable `RAG_SERVICE_URL` angepasst werden (Standard: `http://localhost:8000`).

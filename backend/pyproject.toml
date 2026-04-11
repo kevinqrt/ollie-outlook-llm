@@ -5,12 +5,14 @@ description = "Minimal FastAPI backend for an Outlook LLM project."
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115,<1.0",
-    "ollama>=0.6,<1.0",
+    "httpx>=0.27.0,<1.0",
+    "rag-service-api",
     "uvicorn[standard]>=0.30,<1.0",
 ]
 
 [dependency-groups]
 dev = [
+    "openapi-python-client>=0.21.0,<1.0",
     "mypy>=1.11.2",
     "ruff>=0.15.7",
     "watchdog>=6.0.0",
@@ -33,3 +35,11 @@ docstring-code-format = true
 python_version = "3.13"
 files = ["app"]
 strict = true
+
+[tool.uv.workspace]
+members = [
+    "packages/rag_service_api",
+]
+
+[tool.uv.sources]
+rag-service-api = { workspace = true }

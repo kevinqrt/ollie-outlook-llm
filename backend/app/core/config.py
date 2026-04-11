@@ -1,17 +1,20 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
-        # Allow overriding by real environment variables
         extra="ignore",
     )
 
     rag_service_url: str = "http://127.0.0.1:8060"
+    llm_model: str = "llama3.1:70b"
 
 
 @lru_cache

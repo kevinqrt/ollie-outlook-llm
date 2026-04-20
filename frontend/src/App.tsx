@@ -2,9 +2,6 @@ import { useState } from 'react'
 import { ApiError, getEmailSuggestion } from './api'
 import './App.css'
 
-const TEST_EMAIL_CONTENT =
-  'Hallo, ich interessiere mich fuer weitere Informationen zu Ollie. Koennen Sie mir bitte kurz weiterhelfen?'
-
 type RequestState =
   | { status: 'idle' }
   | { status: 'loading' }
@@ -12,6 +9,9 @@ type RequestState =
   | { status: 'error'; message: string }
 
 function App() {
+  const [emailContent, setEmailContent] = useState(
+    'Test Email Content'
+  )
   const [requestState, setRequestState] = useState<RequestState>({
     status: 'idle',
   })
@@ -22,7 +22,7 @@ function App() {
     setRequestState({ status: 'loading' })
 
     try {
-      const { suggestedReply } = await getEmailSuggestion(TEST_EMAIL_CONTENT)
+      const { suggestedReply } = await getEmailSuggestion(emailContent)
       setRequestState({ status: 'success', suggestedReply })
     } catch (error) {
       setRequestState({
@@ -34,6 +34,13 @@ function App() {
 
   return (
     <main className="taskpane">
+      <textarea
+        className="email-input"
+        value={emailContent}
+        onChange={(e) => setEmailContent(e.target.value)}
+        placeholder="E-Mail Inhalt hier einfuegen..."
+        disabled={isLoading}
+      />
       <button
         className="suggestion-button"
         disabled={isLoading}

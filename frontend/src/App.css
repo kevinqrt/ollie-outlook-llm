@@ -10,6 +10,29 @@
   padding: 24px;
 }
 
+.email-input {
+  width: 100%;
+  max-width: 42rem;
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+.email-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.email-input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .suggestion-button {
   min-height: 44px;
   border: 1px solid var(--accent-border);

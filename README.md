@@ -25,6 +25,16 @@ just backend-server
 ```
 Die API ist unter `http://127.0.0.1:8000` erreichbar. Dokumentation: `/docs`.
 
+Das Frontend wird lokal mit Vite gestartet:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Der Dev-Server läuft unter `https://localhost:3000`.
+
+Für Outlook-Sideloading das Manifest `manifest/manifest.xml` importieren.
+
 ## 🤖 RAG Service API
 Der API-Client für den Hochschul-Service wird automatisch generiert:
 ```bash

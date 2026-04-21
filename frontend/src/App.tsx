@@ -1,34 +1,32 @@
-import { useState } from 'react'
-import { ApiError, getEmailSuggestion } from './api'
-import './App.css'
+import { useState } from 'react';
+import { ApiError, getEmailSuggestion } from './api';
+import './App.css';
 
 type RequestState =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'success'; suggestedReply: string }
-  | { status: 'error'; message: string }
+  | { status: 'error'; message: string };
 
 function App() {
-  const [emailContent, setEmailContent] = useState(
-    'Test Email Content'
-  )
+  const [emailContent, setEmailContent] = useState('Test Email Content');
   const [requestState, setRequestState] = useState<RequestState>({
     status: 'idle',
-  })
+  });
 
-  const isLoading = requestState.status === 'loading'
+  const isLoading = requestState.status === 'loading';
 
   async function requestSuggestion() {
-    setRequestState({ status: 'loading' })
+    setRequestState({ status: 'loading' });
 
     try {
-      const { suggestedReply } = await getEmailSuggestion(emailContent)
-      setRequestState({ status: 'success', suggestedReply })
+      const { suggestedReply } = await getEmailSuggestion(emailContent);
+      setRequestState({ status: 'success', suggestedReply });
     } catch (error) {
       setRequestState({
         status: 'error',
         message: getErrorMessage(error),
-      })
+      });
     }
   }
 
@@ -68,19 +66,19 @@ function App() {
         </p>
       )}
     </main>
-  )
+  );
 }
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    return `Anfrage fehlgeschlagen (${error.status}).`
+    return `Anfrage fehlgeschlagen (${error.status}).`;
   }
 
   if (error instanceof Error) {
-    return error.message
+    return error.message;
   }
 
-  return 'Anfrage fehlgeschlagen.'
+  return 'Anfrage fehlgeschlagen.';
 }
 
-export default App
+export default App;

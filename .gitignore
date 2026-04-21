@@ -33,3 +33,4 @@ venv/
 # Frontend
 node_modules/
 coverage/
+frontend/.vite/

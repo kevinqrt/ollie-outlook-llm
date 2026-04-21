@@ -1,10 +1,10 @@
-export { OLLIE_API_BASE_URL, ollieApiClient } from './client'
+export { OLLIE_API_BASE_URL, ollieApiClient } from './client';
+export type { components, operations, paths } from './generated/schema';
 export {
   ApiError,
+  type EmailSuggestionResponse,
   getEmailSuggestion,
   getHealth,
-  type EmailSuggestionResponse,
   type HealthResponse,
   type RequestOptions,
-} from './ollie'
-export type { components, operations, paths } from './generated/schema'
+} from './ollie';

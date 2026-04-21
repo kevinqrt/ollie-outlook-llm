@@ -8,9 +8,9 @@
   --accent-border: #0f766e;
   --danger: #b91c1c;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
 
-  font: 16px/145% var(--sans);
+  font: 16px / 145% var(--sans);
   letter-spacing: 0;
   color-scheme: light dark;
   color: var(--text);

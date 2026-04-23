@@ -9,12 +9,15 @@ generate-rag-client:
 frontend:
     cd frontend && npm run dev
 
+[group('development')]
+dev:
+    npx concurrently --kill-others \
+        "just backend" \
+        "just frontend"
+
 # Synchronize OpenAPI spec from backend to frontend and regenerate TypeScript SDK
 sync-openapi:
     @echo "Extracting OpenAPI spec from backend..."
     cd backend && uv run python -c "import json; from app.app import app; print(json.dumps(app.openapi(), indent=2))" > ../frontend/src/api/openapi.json
     @echo "Generating TypeScript types..."
     cd frontend && npm run api:generate
-
-[group('development')]
-dev:

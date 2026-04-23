@@ -6,13 +6,11 @@ import mkcert from 'vite-plugin-mkcert';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), mkcert()],
-  // Robust absolute path to the root directory
   envDir: resolve(__dirname, '..'),
   server: {
-    host: 'localhost',
+    host: '127.0.0.1',
     port: 3000,
     https: true,
   },

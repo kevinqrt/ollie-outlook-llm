@@ -1,84 +1,82 @@
-import { useState } from 'react';
-import { ApiError, getEmailSuggestion } from './api';
+import { useEffect, useState } from 'react';
+import { officeService } from './services/officeService';
+import { runReplyWorkflow } from './services/replyWorkflow';
 import './App.css';
 
-type RequestState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'success'; suggestedReply: string }
-  | { status: 'error'; message: string };
+type RequestStatus = 'idle' | 'loading' | 'success' | 'error';
 
 function App() {
-  const [emailContent, setEmailContent] = useState('Test Email Content');
-  const [requestState, setRequestState] = useState<RequestState>({
-    status: 'idle',
-  });
+  const [isCompose, setIsCompose] = useState(false);
+  const [status, setStatus] = useState<RequestStatus>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const isLoading = requestState.status === 'loading';
+  useEffect(() => {
+    Office.onReady(() => {
+      setIsCompose(officeService.isComposeMode());
+    });
+  }, []);
 
-  async function requestSuggestion() {
-    setRequestState({ status: 'loading' });
+  async function handleAction() {
+    setStatus('loading');
+    setErrorMessage('');
 
     try {
-      const { suggestedReply } = await getEmailSuggestion(emailContent);
-      setRequestState({ status: 'success', suggestedReply });
+      await runReplyWorkflow();
+      setStatus('success');
     } catch (error) {
-      setRequestState({
-        status: 'error',
-        message: getErrorMessage(error),
-      });
+      setStatus('error');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Fehler aufgetreten'
+      );
     }
   }
 
   return (
-    <main className="taskpane">
-      <textarea
-        className="email-input"
-        value={emailContent}
-        onChange={(e) => setEmailContent(e.target.value)}
-        placeholder="E-Mail Inhalt hier einfuegen..."
-        disabled={isLoading}
-      />
-      <button
-        className="suggestion-button"
-        disabled={isLoading}
-        type="button"
-        onClick={requestSuggestion}
-      >
-        {isLoading ? 'Wird gesendet...' : 'Antwortvorschlag anfordern'}
-      </button>
+    <main className="taskpane-minimal">
+      <header className="branding">
+        <div className="logo-container">
+          <img
+            src="/icon-80.png"
+            alt="Ollie Logo"
+            className="logo"
+            data-loading={status === 'loading'}
+          />
+        </div>
+        <h1>Ollie KI</h1>
+      </header>
 
-      {requestState.status === 'loading' && (
-        <p className="status" aria-live="polite">
-          Anfrage laeuft.
-        </p>
-      )}
+      <section className="content-area">
+        {isCompose ? (
+          <div className="action-card">
+            <p className="description">Bereit für eine intelligente Antwort.</p>
+            <button
+              className="primary-button"
+              type="button"
+              disabled={status === 'loading'}
+              onClick={handleAction}
+            >
+              {status === 'loading' ? 'Generiere...' : 'Antwort einfügen'}
+            </button>
+            {status === 'success' && (
+              <p className="status-label success">✓ Fertig eingefügt</p>
+            )}
+          </div>
+        ) : (
+          <div className="info-card">
+            <div className="icon-info">ℹ</div>
+            <p>
+              Um die KI zu nutzen, klicken Sie bitte erst auf{' '}
+              <strong>Antworten</strong>.
+            </p>
+          </div>
+        )}
 
-      {requestState.status === 'success' && (
-        <p className="result" aria-live="polite">
-          {requestState.suggestedReply}
-        </p>
-      )}
-
-      {requestState.status === 'error' && (
-        <p className="error" role="alert">
-          {requestState.message}
-        </p>
-      )}
+        {status === 'error' && (
+          <div className="status-label error">{errorMessage}</div>
+        )}
+      </section>
     </main>
   );
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    return `Anfrage fehlgeschlagen (${error.status}).`;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return 'Anfrage fehlgeschlagen.';
 }
 
 export default App;

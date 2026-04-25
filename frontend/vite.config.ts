@@ -14,4 +14,12 @@ export default defineConfig({
     port: 3000,
     https: true,
   },
+  build: {
+    rollupOptions: {
+      input: {
+        taskpane: resolve(__dirname, 'index.html'),
+        commands: resolve(__dirname, 'commands.html'),
+      },
+    },
+  },
 });

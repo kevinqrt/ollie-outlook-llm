@@ -10,7 +10,7 @@
   <ProviderName>Ollie</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Ollie Outlook Add-in"/>
-  <Description DefaultValue="Ollie task pane for Outlook."/>
+  <Description DefaultValue="Professionelle KI-Unterstützung für E-Mails."/>
   <IconUrl DefaultValue="https://localhost:3000/icon-80.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/icon-80.png"/>
   <SupportUrl DefaultValue="https://localhost:3000"/>
@@ -22,7 +22,7 @@
   </Hosts>
   <Requirements>
     <Sets>
-      <Set Name="Mailbox" MinVersion="1.8"/>
+      <Set Name="Mailbox" MinVersion="1.10"/>
     </Sets>
   </Requirements>
   <FormSettings>
@@ -47,7 +47,7 @@
       xmlns="http://schemas.microsoft.com/office/mailappversionoverrides/1.1"
       xsi:type="VersionOverridesV1_1">
       <Requirements>
-        <bt:Sets DefaultMinVersion="1.8">
+        <bt:Sets DefaultMinVersion="1.10">
           <bt:Set Name="Mailbox"/>
         </bt:Sets>
       </Requirements>
@@ -55,11 +55,12 @@
         <Host xsi:type="MailHost">
           <DesktopFormFactor>
             <FunctionFile resid="Commands.Url"/>
+
             <ExtensionPoint xsi:type="MessageReadCommandSurface">
               <OfficeTab id="TabDefault">
-                <Group id="Ollie.ReadGroup">
+                <Group id="Ollie.GroupRead">
                   <Label resid="GroupLabel"/>
-                  <Control xsi:type="Button" id="Ollie.ReadOpenPane">
+                  <Control xsi:type="Button" id="Ollie.OpenPaneRead">
                     <Label resid="OpenPaneLabel"/>
                     <Supertip>
                       <Title resid="OpenPaneLabel"/>
@@ -72,17 +73,32 @@
                     </Icon>
                     <Action xsi:type="ShowTaskpane">
                       <SourceLocation resid="TaskPane.Url"/>
-                      <SupportsPinning>true</SupportsPinning>
                     </Action>
                   </Control>
                 </Group>
               </OfficeTab>
             </ExtensionPoint>
+
             <ExtensionPoint xsi:type="MessageComposeCommandSurface">
               <OfficeTab id="TabDefault">
-                <Group id="Ollie.ComposeGroup">
+                <Group id="Ollie.GroupCompose">
                   <Label resid="GroupLabel"/>
-                  <Control xsi:type="Button" id="Ollie.ComposeOpenPane">
+                  <Control xsi:type="Button" id="Ollie.AutoReplyCompose">
+                    <Label resid="AutoReplyLabel"/>
+                    <Supertip>
+                      <Title resid="AutoReplyLabel"/>
+                      <Description resid="AutoReplyDescription"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="Icon.16"/>
+                      <bt:Image size="32" resid="Icon.32"/>
+                      <bt:Image size="80" resid="Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>generateAutoReplyDirect</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="Ollie.OpenPaneCompose">
                     <Label resid="OpenPaneLabel"/>
                     <Supertip>
                       <Title resid="OpenPaneLabel"/>
@@ -110,15 +126,17 @@
           <bt:Image id="Icon.80" DefaultValue="https://localhost:3000/icon-80.png"/>
         </bt:Images>
         <bt:Urls>
-          <bt:Url id="Commands.Url" DefaultValue="https://localhost:3000"/>
+          <bt:Url id="Commands.Url" DefaultValue="https://localhost:3000/commands.html"/>
           <bt:Url id="TaskPane.Url" DefaultValue="https://localhost:3000"/>
         </bt:Urls>
         <bt:ShortStrings>
-          <bt:String id="GroupLabel" DefaultValue="Ollie"/>
-          <bt:String id="OpenPaneLabel" DefaultValue="Open Ollie"/>
+          <bt:String id="GroupLabel" DefaultValue="Ollie KI"/>
+          <bt:String id="OpenPaneLabel" DefaultValue="Ollie öffnen"/>
+          <bt:String id="AutoReplyLabel" DefaultValue="Antwort einfügen"/>
         </bt:ShortStrings>
         <bt:LongStrings>
-          <bt:String id="OpenPaneDescription" DefaultValue="Open the Ollie task pane for the current message."/>
+          <bt:String id="OpenPaneDescription" DefaultValue="Öffnet die Ollie Taskpane."/>
+          <bt:String id="AutoReplyDescription" DefaultValue="Generiert einen KI-Vorschlag und fügt ihn direkt in die Antwort ein."/>
         </bt:LongStrings>
       </Resources>
     </VersionOverrides>

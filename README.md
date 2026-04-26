@@ -1,47 +1,38 @@
-# Ollie
+# Ollie 🤖
 
-Monorepo für den Outlook LLM Client.
+Outlook KI-Assistent. Backend: FastAPI | Frontend: React (Office Add-in).
 
-## 🛠 Setup
+## 🛠 Setup (Ersteinrichtung)
 
-### 1. Pre-commit / prek
-`prek` wird zentral als User-Tool installiert:
+1. **Tools installieren:**
+   - [uv](https://docs.astral.sh/uv/) (Python Paketmanager)
+   - [just](https://github.com/casey/just) (Task Runner)
+   - Node.js & npm
+
+2. **Installation & Initialisierung:**
+   ```bash
+   just setup
+   ```
+   *Dieser Befehl installiert alle Python- und NPM-Abhängigkeiten und generiert das initiale SDK.*
+
+## 🚀 Start
+
+1. **Anwendung starten:**
+   ```bash
+   just dev
+   ```
+   - Backend: `http://127.0.0.1:8000`
+   - Frontend: `https://localhost:3000`
+
+## 🔄 Workflow
+
+Bei Backend-Änderungen (Endpunkte/Schemas):
 ```bash
-uv tool install prek
+just sync-openapi
 ```
+Dies aktualisiert das SDK in `src/api/generated` für das Frontend.
 
-### 2. Backend (FastAPI)
-Das Python-Projekt befindet sich im Ordner `backend/`.
-```bash
-cd backend
-uv sync
-```
+## 🧪 Testing
 
-## 🚀 Anwendung starten
-
-Das Backend kann über das zentrale `justfile` im Root-Verzeichnis gestartet werden:
-```bash
-just backend-server
-```
-Die API ist unter `http://127.0.0.1:8000` erreichbar. Dokumentation: `/docs`.
-
-Das Frontend wird lokal mit Vite gestartet:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Der Dev-Server läuft unter `https://localhost:3000`.
-
-Für Outlook-Sideloading das Manifest `manifest/manifest.xml` importieren.
-
-## 🤖 RAG Service API
-Der API-Client für den Hochschul-Service wird automatisch generiert:
-```bash
-just generate-rag-client
-```
-
-## ⚙️ Konfiguration
-Die Konfiguration erfolgt über eine `.env` Datei im **Projekt-Root**.
-1. `cp .env.example .env`
-2. Variablen anpassen (z.B. `RAG_SERVICE_URL`, `LLM_MODEL`).
+*   **Browser:** Microsoft Edge.
+*   **Outlook:** Manifest unter `manifest/manifest.xml` im Outlook Web-Client hochladen.

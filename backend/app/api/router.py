@@ -1,14 +1,24 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.schemas.email_schema import EmailSuggestionRequestSchema, EmailSuggestionResponseSchema
+from app.api.schemas.email_schema import (
+    EmailSuggestionRequestSchema,
+    EmailSuggestionResponseSchema,
+    HealthResponseSchema,
+)
 from app.services.llm_service import LlmService, LlmServiceError
 
 api_router = APIRouter()
 
 
-@api_router.get("/health", summary="Health check", tags=["health"])
-async def health_check() -> dict[str, str]:
-    return {"status": "ok"}
+@api_router.get(
+    "/health",
+    response_model=HealthResponseSchema,
+    summary="Health check",
+    tags=["health"],
+    operation_id="getHealth",
+)
+async def health_check() -> HealthResponseSchema:
+    return HealthResponseSchema(status="ok")
 
 
 @api_router.post(
@@ -17,6 +27,7 @@ async def health_check() -> dict[str, str]:
     summary="Antwortvorschlag generieren",
     tags=["email"],
     description="Liest eine E-Mail ein und erzeugt einen passenden Antwortvorschlag.",
+    operation_id="getEmailSuggestion",
 )
 async def get_email_suggestion(
     payload: EmailSuggestionRequestSchema,

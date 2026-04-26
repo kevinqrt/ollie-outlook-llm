@@ -1,3 +1,12 @@
+# Initial setup: install dependencies and generate SDK
+setup:
+    @echo "Installing backend dependencies..."
+    cd backend && uv sync
+    @echo "Installing frontend dependencies..."
+    cd frontend && npm install
+    @echo "Generating initial SDK..."
+    just sync-openapi
+
 [group('backend')]
 backend:
     cd backend && uv run uvicorn app.app:app --reload

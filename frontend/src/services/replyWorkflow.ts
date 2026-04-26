@@ -12,8 +12,17 @@ export async function runReplyWorkflow() {
     const content = await officeService.getBodyText();
 
     // 2. KI-Vorschlag holen
-    const { suggestedReply } = await getEmailSuggestion(content);
-    if (!suggestedReply) throw new Error();
+    const { data, error } = await getEmailSuggestion({
+      body: { emailContent: content },
+    });
+
+    if (error || !data?.suggestedReply) {
+      throw new Error(
+        error ? JSON.stringify(error) : 'Kein Vorschlag generiert'
+      );
+    }
+
+    const { suggestedReply } = data;
 
     // 3. Aktion ausführen
     if (officeService.isComposeMode()) {

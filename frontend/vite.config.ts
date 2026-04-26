@@ -12,7 +12,8 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 3000,
-    https: true,
+    // biome-ignore lint/suspicious/noExplicitAny: Vite 6+ has stricter https types that conflict with mkcert's true value
+    https: true as any,
   },
   build: {
     rollupOptions: {

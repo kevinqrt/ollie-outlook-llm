@@ -15,9 +15,9 @@ dev:
         "just backend" \
         "just frontend"
 
-# Synchronize OpenAPI spec from backend to frontend and regenerate TypeScript SDK
+# Synchronize OpenAPI spec from fastapi backend to frontend and regenerate SDK
 sync-openapi:
     @echo "Extracting OpenAPI spec from backend..."
     cd backend && uv run python -c "import json; from app.app import app; print(json.dumps(app.openapi(), indent=2))" > ../frontend/src/api/openapi.json
-    @echo "Generating TypeScript types..."
+    @echo "Generating Frontend SDK..."
     cd frontend && npm run api:generate

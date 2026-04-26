@@ -11,18 +11,14 @@
           "health"
         ],
         "summary": "Health check",
-        "operationId": "health_check_health_get",
+        "operationId": "getHealth",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Health Check Health Get"
+                  "$ref": "#/components/schemas/HealthResponseSchema"
                 }
               }
             }
@@ -37,7 +33,7 @@
         ],
         "summary": "Antwortvorschlag generieren",
         "description": "Liest eine E-Mail ein und erzeugt einen passenden Antwortvorschlag.",
-        "operationId": "get_email_suggestion_email_suggestion_post",
+        "operationId": "getEmailSuggestion",
         "requestBody": {
           "content": {
             "application/json": {
@@ -77,30 +73,30 @@
     "schemas": {
       "EmailSuggestionRequestSchema": {
         "properties": {
-          "email_content": {
+          "emailContent": {
             "type": "string",
             "minLength": 1,
-            "title": "Email Content",
+            "title": "Emailcontent",
             "description": "Der Inhalt der zu analysierenden E-Mail."
           }
         },
         "type": "object",
         "required": [
-          "email_content"
+          "emailContent"
         ],
         "title": "EmailSuggestionRequestSchema"
       },
       "EmailSuggestionResponseSchema": {
         "properties": {
-          "suggested_reply": {
+          "suggestedReply": {
             "type": "string",
-            "title": "Suggested Reply",
+            "title": "Suggestedreply",
             "description": "Der von der KI generierte Antwortvorschlag."
           }
         },
         "type": "object",
         "required": [
-          "suggested_reply"
+          "suggestedReply"
         ],
         "title": "EmailSuggestionResponseSchema"
       },
@@ -116,6 +112,20 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HealthResponseSchema": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Der Status des Backends."
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponseSchema"
       },
       "ValidationError": {
         "properties": {

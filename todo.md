@@ -5,8 +5,6 @@
 
 ## Features
 
-- [ ] **Generate Reply Button**: Add a generate reply button which automatically generates a reply for the focused email based on the `getEmailSuggestion` method.
-
 - [ ] **Vector Store Integration für PDF/Website Scanner**
   - **Ziel:** E-Mail-Antworten vor dem Senden an den RAG-Service mit zusätzlichem Wissen aus PDFs anreichern.
 

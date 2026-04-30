@@ -34,5 +34,7 @@ jobs:
 
       - name: Run Pre-commit Hooks
         uses: pre-commit/action@v3.0.1
+        env:
+          SKIP: pytest-backend # already implemented as own action
         # This action automatically executes all hooks from the .pre-commit-config.yaml file.
         # Since we are using system hooks (tsc, mypy), we have prepared Node and Python above.

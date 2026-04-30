@@ -52,7 +52,7 @@ Zur Sicherstellung der Qualität setzen wir auf automatisierte Prozesse innerhal
 
 *   **Security Gate:** **GitHub Dependabot** überwacht kontinuierlich alle Abhängigkeiten auf bekannte Sicherheitslücken und meldet notwendige Updates sofort.
 *   **Static Analysis Gate:** Die im Abschnitt 2 beschriebenen Tools (Ruff, Mypy, Biome) sind sowohl in die CI-Pipeline integriert als auch über die **[.pre-commit-config.yaml](../.pre-commit-config.yaml)** lokal konfiguriert. Commits werden nur akzeptiert, wenn alle Linter und Type-Checker fehlerfrei durchlaufen (lokale Vorprüfung).
-*   **Testing Gate:** Wir nutzen **pytest-cov**, um die Testabdeckung zu messen.
+*   **Testing Gate:** Wir nutzen **pytest-cov**, um die Testabdeckung im Backend sicherzustellen. Die CI-Pipeline bricht ab, wenn Tests fehlschlagen.
 
 ---
 
@@ -71,29 +71,18 @@ Wir setzen konsequent auf **automatisierte Dokumentation** und **Self-Documentin
 Das Projekt wird professionell versioniert und durch automatisierte Workflows unterstützt.
 
 *   **System:** Git (gehostet auf GitHub).
-*   **Projekt-Management:** Nutzung des Issue Boards zur Verteilung von Aufgaben und Verfolgung des Fortschritts.
 *   **Versionsschema:** [Semantic Versioning](https://semver.org/lang/de/) (Major.Feature.Bugfix).
 *   **CI/CD-Pipeline:**
-    *   Wird bei jedem Push und Pull-Request ausgelöst.
-    *   **Schritte:** Setup Environment -> Linting (Ruff/Biome) -> Type-Check (Mypy/TSC) -> Testing & Coverage (Pytest/Vitest).
+    *   Wird bei jedem Push und Pull-Request ausgelöst. Konfiguration dafür findet man unter `.github/workflows/ci.yml`.
 
 ---
 
 ## 6. Reviewprozesse
 
-Änderungen am Code folgen einem strikten Review-Verfahren.
+Änderungen am Code folgen einem strukturierten Review-Verfahren.
 
 *   **Pull Requests (PR):** Kein Code gelangt direkt in den `main`-Branch. Jede Änderung erfordert einen PR.
-*   **Branch Protection:** Der `main`-Branch ist geschützt und erfordert mindestens ein "Approve" durch ein anderes Teammitglied nach einem Review.
-*   **Dokumentation:** (Exemplarisch durchgeführte Reviews und Kommentare sind in den GitHub/GitLab PRs dokumentiert).
+*   **Branch Protection:** Der `main`-Branch ist geschützt. Änderungen erfordern einen Pull Request und den erfolgreichen Durchlauf aller CI-Checks (Linting & Tests), bevor sie gemergt werden können.
+*   **Dokumentation:** Durchgeführte Reviews und Kommentare sind exemplarisch in den GitHub PRs dokumentiert, um den Entscheidungsprozess nachvollziehbar zu machen.
 
 ---
-
-## 7. Überarbeitung der technischen Durchstiche
-
-Initial erstellte Prototypen (Spikes) wurden für die finale Implementierung reflektiert und überarbeitet.
-
-*   **Vom Prototyp zur Architektur:**
-    *   Erste experimentelle Skripte zur Anbindung der AnythingLLM-API wurden in die formale Struktur des `LlmService` überführt.
-    *   Die Trennung von Belangen (Separation of Concerns) wurde konsequent umgesetzt: Logik zur Kontext-Extraktion wurde aus der API-Schicht in dedizierte Services (`ContextExtractor`) ausgelagert.
-    *   Fehlerbehandlung und Logging wurden von einfachen `print`-Statements auf robuste Python-Exception-Handling und Logging-Module umgestellt.

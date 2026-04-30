@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0 # No automatic pull requests for normal version updates
+
+  # Maintain dependencies for npm in frontend
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+
+  # Maintain dependencies for pip in backend
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+
+  # Maintain dependencies for pip in backend/packages/rag_service_api
+  - package-ecosystem: "pip"
+    directory: "/backend/packages/rag_service_api"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0

@@ -1,6 +1,7 @@
-# Ollie 🤖
+# OLLIE 🤖
+**Outlook Local Language Inference Engine**
 
-Outlook KI-Assistent. Backend: FastAPI | Frontend: React (Office Add-in).
+An intelligent AI assistant for Outlook generating context-aware email replies using RAG and LLMs.
 
 ## 🛠 Setup (Ersteinrichtung)
 

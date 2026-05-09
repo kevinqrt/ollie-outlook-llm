@@ -3,6 +3,7 @@ from rag_service_api import Client, DirectQueryRequest, HTTPValidationError, dir
 
 from app.core.config import settings
 from app.services.prompt_service import PromptService
+from app.services.vector_store_service import vector_store_service
 
 
 class LlmServiceError(RuntimeError):
@@ -19,11 +20,19 @@ class LlmService:
         )
 
     async def generate_suggestion(self, email_text: str) -> str:
-        """Ruft den RAG-Service auf, um einen einzelnen Antwortvorschlag zu erhalten."""
-        query_text = self.prompt_service.get_reply_prompt(email_text)
+        """Sucht relevantes Wissen und generiert dann einen Antwortvorschlag."""
+        
+        # 1. Relevantes Wissen aus der Vektordatenbank suchen
+        knowledge_results = vector_store_service.search(email_text, k=3)
+        context_knowledge = "\n".join([doc.page_content for doc in knowledge_results])
+        
+        # 2. Den Prompt vorbereiten (Email + Zusatzwissen)
+        full_context = f"EMAIL CONTENT:\n{email_text}\n\nADDITIONAL KNOWLEDGE FROM DOCUMENTS:\n{context_knowledge}"
+        query_text = self.prompt_service.get_reply_prompt(full_context)
 
+        # 3. Anfrage an den RAG-Service (LLM) stellen
         request_body = DirectQueryRequest(
-            documents_text=email_text,
+            documents_text=full_context,
             query=query_text,
             llm_model=settings.llm_model,
         )

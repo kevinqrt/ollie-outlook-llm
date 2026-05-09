@@ -4,10 +4,17 @@ version = "0.1.0"
 description = "Minimal FastAPI backend for an Outlook LLM project."
 requires-python = ">=3.11"
 dependencies = [
+    "chromadb>=1.5.9",
     "fastapi>=0.115,<1.0",
     "httpx>=0.27.0,<1.0",
+    "langchain>=1.2.18",
+    "langchain-community>=0.4.1",
+    "langchain-huggingface>=1.2.2",
     "pydantic-settings>=2.13.1",
+    "pymupdf>=1.27.2.3",
+    "python-multipart>=0.0.27",
     "rag-service-api",
+    "sentence-transformers>=5.4.1",
     "uvicorn[standard]>=0.30,<1.0",
 ]
 

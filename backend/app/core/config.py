@@ -15,6 +15,8 @@ class Settings(BaseSettings):
 
     rag_service_url: str = "http://127.0.0.1:8060"
     llm_model: str = "llama3.1:70b"
+    embedding_model: str = "all-MiniLM-L6-v2"
+    vector_store_path: str = "chroma_db"
     cors_origins: list[str] = ["*"]
 
 

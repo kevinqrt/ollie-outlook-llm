@@ -22,6 +22,13 @@ repos:
         types: [text]
         files: ^frontend/.*\.(jsx?|tsx?|c(js|ts)|m(js|ts)|d\.(ts|cts|mts)|jsonc?|css|svelte|vue|astro|graphql|gql)$
 
+    -   id: typecheck-frontend
+        name: typecheck frontend
+        entry: bash -c 'cd frontend && npm run typecheck'
+        language: system
+        pass_filenames: false
+        always_run: true
+
   # Backend
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.7
@@ -40,6 +47,13 @@ repos:
       - id: mypy-backend
         name: mypy backend
         entry: uv run --project backend mypy --config-file=backend/pyproject.toml backend/app
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: pytest-backend
+        name: pytest backend
+        entry: bash -c 'cd backend && uv run pytest'
         language: system
         pass_filenames: false
         always_run: true

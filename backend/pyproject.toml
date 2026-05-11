@@ -26,6 +26,7 @@ dev = [
     "watchdog>=6.0.0",
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
+    "prek>=0.3.13",
 ]
 
 [tool.ruff]

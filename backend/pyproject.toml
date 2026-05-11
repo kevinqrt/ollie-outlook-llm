@@ -24,6 +24,8 @@ dev = [
     "mypy>=1.11.2",
     "ruff>=0.15.7",
     "watchdog>=6.0.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
 ]
 
 [tool.ruff]
@@ -43,6 +45,15 @@ docstring-code-format = true
 python_version = "3.13"
 files = ["app"]
 strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--cov=app --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["**/__init__.py"]
 
 [tool.uv.workspace]
 members = [

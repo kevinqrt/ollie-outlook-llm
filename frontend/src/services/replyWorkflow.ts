@@ -1,6 +1,47 @@
 import { getEmailSuggestion } from '../api';
 import { officeService } from './officeService';
 
+function describeRequestError(error: unknown): string {
+  if (!error) {
+    return 'Unbekannter Fehler beim Abruf der Antwort.';
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'object') {
+    const maybeError = error as {
+      detail?: unknown;
+      message?: unknown;
+      error?: unknown;
+      response?: { status?: number; statusText?: string };
+    };
+
+    if (typeof maybeError.detail === 'string') {
+      return maybeError.detail;
+    }
+    if (typeof maybeError.message === 'string') {
+      return maybeError.message;
+    }
+    if (typeof maybeError.error === 'string') {
+      return maybeError.error;
+    }
+    if (maybeError.response?.status) {
+      const statusText = maybeError.response.statusText
+        ? ` ${maybeError.response.statusText}`
+        : '';
+      return `HTTP ${maybeError.response.status}${statusText}`.trim();
+    }
+  }
+
+  return 'Unbekannter Fehler beim Abruf der Antwort.';
+}
+
 /**
  * Der zentrale KI-Antwort-Workflow.
  */
@@ -17,9 +58,7 @@ export async function runReplyWorkflow() {
     });
 
     if (error || !data?.suggestedReply) {
-      throw new Error(
-        error ? JSON.stringify(error) : 'Kein Vorschlag generiert'
-      );
+      throw new Error(error ? describeRequestError(error) : 'Kein Vorschlag generiert');
     }
 
     const { suggestedReply } = data;

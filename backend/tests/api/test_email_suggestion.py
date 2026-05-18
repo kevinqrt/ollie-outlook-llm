@@ -13,7 +13,7 @@ def test_get_email_suggestion_success(client):
         mock_gen.return_value = expected_reply
 
         # WHEN
-        response = client.post("/email/suggestion", json={"email_content": email_content})
+        response = client.post("/api/email/suggestion", json={"email_content": email_content})
 
         # THEN
         assert response.status_code == status.HTTP_200_OK

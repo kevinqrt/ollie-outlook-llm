@@ -3,7 +3,9 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+from app.core.runtime import get_app_root
+
+BASE_DIR = get_app_root()
 
 
 class Settings(BaseSettings):
@@ -16,6 +18,10 @@ class Settings(BaseSettings):
     rag_service_url: str = "http://127.0.0.1:8060"
     llm_model: str = "llama3.1:70b"
     cors_origins: list[str] = ["*"]
+    server_host: str = "localhost"
+    server_port: int = 8000
+    ssl_certfile: str | None = None
+    ssl_keyfile: str | None = None
 
 
 @lru_cache

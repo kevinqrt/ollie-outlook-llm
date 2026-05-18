@@ -82,7 +82,7 @@ export type GetHealthData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/health';
+    url: '/api/health';
 };
 
 export type GetHealthResponses = {
@@ -98,7 +98,7 @@ export type GetEmailSuggestionData = {
     body: EmailSuggestionRequestSchema;
     path?: never;
     query?: never;
-    url: '/email/suggestion';
+    url: '/api/email/suggestion';
 };
 
 export type GetEmailSuggestionErrors = {

@@ -11,11 +11,11 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Ollie Outlook Add-in"/>
   <Description DefaultValue="Professionelle KI-Unterstützung für E-Mails."/>
-  <IconUrl DefaultValue="https://localhost:3000/icon-80.png"/>
-  <HighResolutionIconUrl DefaultValue="https://localhost:3000/icon-80.png"/>
-  <SupportUrl DefaultValue="https://localhost:3000"/>
+  <IconUrl DefaultValue="https://localhost:8000/icon-80.png"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost:8000/icon-80.png"/>
+  <SupportUrl DefaultValue="https://localhost:8000"/>
   <AppDomains>
-    <AppDomain>https://localhost:3000</AppDomain>
+    <AppDomain>https://localhost:8000</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Mailbox"/>
@@ -28,7 +28,7 @@
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://localhost:3000"/>
+        <SourceLocation DefaultValue="https://localhost:8000"/>
         <RequestedHeight>250</RequestedHeight>
       </DesktopSettings>
     </Form>
@@ -121,13 +121,13 @@
       </Hosts>
       <Resources>
         <bt:Images>
-          <bt:Image id="Icon.16" DefaultValue="https://localhost:3000/icon-80.png"/>
-          <bt:Image id="Icon.32" DefaultValue="https://localhost:3000/icon-80.png"/>
-          <bt:Image id="Icon.80" DefaultValue="https://localhost:3000/icon-80.png"/>
+          <bt:Image id="Icon.16" DefaultValue="https://localhost:8000/icon-80.png"/>
+          <bt:Image id="Icon.32" DefaultValue="https://localhost:8000/icon-80.png"/>
+          <bt:Image id="Icon.80" DefaultValue="https://localhost:8000/icon-80.png"/>
         </bt:Images>
         <bt:Urls>
-          <bt:Url id="Commands.Url" DefaultValue="https://localhost:3000/commands.html"/>
-          <bt:Url id="TaskPane.Url" DefaultValue="https://localhost:3000"/>
+          <bt:Url id="Commands.Url" DefaultValue="https://localhost:8000/commands.html"/>
+          <bt:Url id="TaskPane.Url" DefaultValue="https://localhost:8000"/>
         </bt:Urls>
         <bt:ShortStrings>
           <bt:String id="GroupLabel" DefaultValue="Ollie KI"/>

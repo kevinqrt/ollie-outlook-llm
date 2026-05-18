@@ -37,3 +37,36 @@ Dies aktualisiert das SDK in `src/api/generated` für das Frontend.
 
 *   **Browser:** Microsoft Edge.
 *   **Outlook:** Manifest unter `manifest/manifest.xml` im Outlook Web-Client hochladen.
+
+## Desktop Host (Windows Dev)
+
+Lokaler Start des gemeinsamen HTTPS-Hosts:
+
+```powershell
+.\start-ollie-dev.bat
+```
+
+Dabei passiert:
+
+1. Das Frontend wird nach `frontend/dist` gebaut.
+2. Ein lokales `localhost`-Zertifikat wird erzeugt und in `.env` eingetragen.
+3. Ein `customtkinter`-Fenster startet den gemeinsamen Host:
+   - Frontend unter `/`
+   - API unter `/api`
+   - HTTPS auf `https://localhost:8000`
+
+## Windows Build
+
+Die erste echte Windows-`.exe` wird mit PyInstaller gebaut:
+
+```powershell
+.\build-desktop-windows.bat
+```
+
+Das Ergebnis liegt danach unter:
+
+```text
+backend\dist\OllieDesktopHost.exe
+```
+
+Die gebaute App liest gebündelte Ressourcen aus dem Bundle und speichert lokale Konfiguration sowie Zertifikate neben der `.exe`.

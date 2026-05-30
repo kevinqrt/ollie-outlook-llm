@@ -1,0 +1,86 @@
+.notification-container-fixed {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  z-index: 10000;
+  pointer-events: none; /* Container itself shouldn't block clicks */
+}
+
+.status-popup-container {
+  pointer-events: auto; /* Re-enable clicks for the popups */
+  position: relative; /* Changed from absolute to work in flex container */
+  bottom: 0;
+  left: 0;
+  transform: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 280px;
+  max-width: 90vw;
+  animation: statusPopupSlideUp 0.3s ease-out;
+  border: 1px solid transparent;
+}
+
+@keyframes statusPopupSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.status-popup-container.success {
+  background-color: #f0f9f0;
+  color: #107c10;
+  border-color: #7eb37e;
+}
+
+.status-popup-container.error {
+  background-color: #fff4f4;
+  color: #a4262c;
+  border-color: #e8a5a8;
+}
+
+.status-popup-container.info {
+  background-color: #f3f9ff;
+  color: #0078d4;
+  border-color: #97c4f3;
+}
+
+.status-popup-icon {
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+}
+
+.status-popup-message {
+  line-height: 1.4;
+  flex: 1;
+}
+
+.status-popup-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: inherit;
+  opacity: 0.6;
+  padding: 0 4px;
+  transition: opacity 0.2s;
+}
+
+.status-popup-close:hover {
+  opacity: 1;
+}

@@ -1,12 +1,21 @@
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated
 
+from fastapi import APIRouter, File, HTTPException, UploadFile, status
+
+from app.api.schemas.chat_schema import ChatRequestSchema, ChatResponseSchema
 from app.api.schemas.email_schema import (
     EmailSuggestionRequestSchema,
     EmailSuggestionResponseSchema,
     ErrorResponseSchema,
     HealthResponseSchema,
 )
-from app.services.llm_service import LlmService, LlmServiceError
+from app.api.schemas.knowledge_schema import (
+    KnowledgeDocumentListSchema,
+    KnowledgeSearchResponseSchema,
+    KnowledgeUploadResponseSchema,
+)
+from app.core.dependencies import LlmServiceDep, VectorStoreServiceDep
+from app.services.llm_service import LlmServiceError
 
 api_router = APIRouter()
 
@@ -24,6 +33,28 @@ async def health_check() -> HealthResponseSchema:
 
 
 @api_router.post(
+    "/chat",
+    response_model=ChatResponseSchema,
+    summary="Classical LLM chat",
+    tags=["chat"],
+    operation_id="postChat",
+)
+async def post_chat(
+    payload: ChatRequestSchema,
+    service: LlmServiceDep,
+) -> ChatResponseSchema:
+    """Provide a classical chat interface with history and RAG context."""
+    try:
+        reply = await service.chat(payload.messages)
+        return ChatResponseSchema(reply=reply)
+    except LlmServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+
+@api_router.post(
     "/email/suggestion",
     response_model=EmailSuggestionResponseSchema,
     summary="Generate AI email suggestion",
@@ -37,9 +68,9 @@ async def health_check() -> HealthResponseSchema:
 )
 async def get_email_suggestion(
     payload: EmailSuggestionRequestSchema,
+    service: LlmServiceDep,
 ) -> EmailSuggestionResponseSchema:
     """Generate a professional AI-driven reply suggestion for an incoming email."""
-    service = LlmService()
     try:
         reply_text = await service.generate_suggestion(payload.email_content)
         return EmailSuggestionResponseSchema(suggested_reply=reply_text)
@@ -48,3 +79,66 @@ async def get_email_suggestion(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
+
+
+@api_router.post(
+    "/knowledge/pdf",
+    response_model=KnowledgeUploadResponseSchema,
+    summary="Upload and index a PDF document",
+    tags=["knowledge"],
+)
+async def upload_pdf(
+    file: Annotated[UploadFile, File()],
+    service: VectorStoreServiceDep,
+) -> KnowledgeUploadResponseSchema:
+    if not file.filename or not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+
+    content = await file.read()
+    try:
+        filename = await service.ingest_pdf(content, file.filename)
+        return KnowledgeUploadResponseSchema(filename=filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@api_router.get(
+    "/knowledge/search",
+    response_model=KnowledgeSearchResponseSchema,
+    summary="Search in the knowledge base",
+    tags=["knowledge"],
+)
+async def search_knowledge(
+    query: str,
+    service: VectorStoreServiceDep,
+) -> KnowledgeSearchResponseSchema:
+    results = await service.search(query)
+    return KnowledgeSearchResponseSchema(results=results)
+
+
+@api_router.get(
+    "/knowledge/documents",
+    response_model=KnowledgeDocumentListSchema,
+    summary="List all indexed documents",
+    tags=["knowledge"],
+)
+async def list_documents(
+    service: VectorStoreServiceDep,
+) -> KnowledgeDocumentListSchema:
+    docs = await service.list_documents()
+    return KnowledgeDocumentListSchema(documents=docs)
+
+
+@api_router.delete(
+    "/knowledge/documents/{filename}",
+    summary="Delete a document from the knowledge base",
+    tags=["knowledge"],
+)
+async def delete_document(
+    filename: str,
+    service: VectorStoreServiceDep,
+) -> dict[str, str]:
+    success = await service.delete_document(filename)
+    if not success:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    return {"status": "deleted", "filename": filename}

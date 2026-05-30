@@ -22,7 +22,7 @@
 
 .branding {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .logo-container {
@@ -62,8 +62,37 @@ h1 {
   color: var(--primary);
 }
 
+.tab-navigation {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.tab-button.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.tab-button:hover:not(.active) {
+  background: #f3f2f1;
+}
+
 .content-area {
   flex-grow: 1;
+  overflow-y: auto;
 }
 
 .action-card,

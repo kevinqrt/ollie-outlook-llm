@@ -1,7 +1,8 @@
 from fastapi import status
+from fastapi.testclient import TestClient
 
 
-def test_health_check(client):
+def test_health_check(client: TestClient) -> None:
     """Tests the health check endpoint using Given-When-Then."""
     # GIVEN
     endpoint = "/health"

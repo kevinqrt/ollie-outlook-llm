@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     llm_model: str = "llama3.1:70b"
     cors_origins: list[str] = ["*"]
 
+    vector_store_path: str = "./chroma_db"
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    chunk_size: int = 1000
+    chunk_overlap: int = 100
+
 
 @lru_cache
 def get_settings() -> Settings:

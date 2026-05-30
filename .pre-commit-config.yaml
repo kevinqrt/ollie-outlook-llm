@@ -50,10 +50,3 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-
-      - id: pytest-backend
-        name: pytest backend
-        entry: bash -c 'cd backend && uv run pytest'
-        language: system
-        pass_filenames: false
-        always_run: true

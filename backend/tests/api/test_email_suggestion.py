@@ -1,15 +1,16 @@
 from unittest.mock import patch
 
 from fastapi import status
+from fastapi.testclient import TestClient
 
 
-def test_get_email_suggestion_success(client):
+def test_get_email_suggestion_success(client: TestClient) -> None:
     """Tests a successful email suggestion request"""
     # GIVEN
     email_content = "Can we meet tomorrow?"
     expected_reply = "This is a mock reply."
 
-    with patch("app.api.router.LlmService.generate_suggestion") as mock_gen:
+    with patch("app.services.llm_service.LlmService.generate_suggestion") as mock_gen:
         mock_gen.return_value = expected_reply
 
         # WHEN

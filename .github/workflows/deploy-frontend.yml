@@ -2,7 +2,7 @@ name: Deploy Frontend to GitHub Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "feat/gh-pages-deploy"]
   workflow_dispatch:
 
 permissions:
@@ -17,9 +17,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,18 +29,24 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: cd frontend && npm ci
 
       - name: Build
-        run: npm run build
+        run: |
+          cd frontend
+          # Hier kannst du die Backend-URL für die Produktion festlegen
+          # npm run build -- --mode production
+          npm run build
+        env:
+          VITE_BASE_API_URL: ${{ vars.VITE_BASE_API_URL }}
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v4
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: frontend/dist
+          path: './frontend/dist'
 
   deploy:
     environment:

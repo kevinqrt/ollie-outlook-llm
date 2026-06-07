@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - container-registry-republish
+      - container-registry-publish
   workflow_dispatch:
 
 env:

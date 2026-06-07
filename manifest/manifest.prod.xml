@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OfficeApp
+  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.1"
+  xsi:type="MailApp">
+  <Id>f4f1a157-cbc0-4c0b-a998-db3b12364c21</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Ollie</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="Ollie Outlook Add-in"/>
+  <Description DefaultValue="Professionelle KI-Unterstützung für E-Mails."/>
+  <IconUrl DefaultValue="https://localhost/icon-80.png"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost/icon-80.png"/>
+  <SupportUrl DefaultValue="https://localhost"/>
+  <AppDomains>
+    <AppDomain>https://localhost</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Mailbox"/>
+  </Hosts>
+  <Requirements>
+    <Sets>
+      <Set Name="Mailbox" MinVersion="1.10"/>
+    </Sets>
+  </Requirements>
+  <FormSettings>
+    <Form xsi:type="ItemRead">
+      <DesktopSettings>
+        <SourceLocation DefaultValue="https://localhost"/>
+        <RequestedHeight>250</RequestedHeight>
+      </DesktopSettings>
+    </Form>
+  </FormSettings>
+  <Permissions>ReadWriteItem</Permissions>
+  <Rule xsi:type="RuleCollection" Mode="Or">
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read"/>
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Edit"/>
+  </Rule>
+  <DisableEntityHighlighting>false</DisableEntityHighlighting>
+
+  <VersionOverrides
+    xmlns="http://schemas.microsoft.com/office/mailappversionoverrides"
+    xsi:type="VersionOverridesV1_0">
+    <VersionOverrides
+      xmlns="http://schemas.microsoft.com/office/mailappversionoverrides/1.1"
+      xsi:type="VersionOverridesV1_1">
+      <Requirements>
+        <bt:Sets DefaultMinVersion="1.10">
+          <bt:Set Name="Mailbox"/>
+        </bt:Sets>
+      </Requirements>
+      <Hosts>
+        <Host xsi:type="MailHost">
+          <DesktopFormFactor>
+            <FunctionFile resid="Commands.Url"/>
+
+            <ExtensionPoint xsi:type="MessageReadCommandSurface">
+              <OfficeTab id="TabDefault">
+                <Group id="Ollie.GroupRead">
+                  <Label resid="GroupLabel"/>
+                  <Control xsi:type="Button" id="Ollie.OpenPaneRead">
+                    <Label resid="OpenPaneLabel"/>
+                    <Supertip>
+                      <Title resid="OpenPaneLabel"/>
+                      <Description resid="OpenPaneDescription"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="Icon.16"/>
+                      <bt:Image size="32" resid="Icon.32"/>
+                      <bt:Image size="80" resid="Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="TaskPane.Url"/>
+                    </Action>
+                  </Control>
+                </Group>
+              </OfficeTab>
+            </ExtensionPoint>
+
+            <ExtensionPoint xsi:type="MessageComposeCommandSurface">
+              <OfficeTab id="TabDefault">
+                <Group id="Ollie.GroupCompose">
+                  <Label resid="GroupLabel"/>
+                  <Control xsi:type="Button" id="Ollie.AutoReplyCompose">
+                    <Label resid="AutoReplyLabel"/>
+                    <Supertip>
+                      <Title resid="AutoReplyLabel"/>
+                      <Description resid="AutoReplyDescription"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="Icon.16"/>
+                      <bt:Image size="32" resid="Icon.32"/>
+                      <bt:Image size="80" resid="Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>generateAutoReplyDirect</FunctionName>
+                    </Action>
+                  </Control>
+                  <Control xsi:type="Button" id="Ollie.OpenPaneCompose">
+                    <Label resid="OpenPaneLabel"/>
+                    <Supertip>
+                      <Title resid="OpenPaneLabel"/>
+                      <Description resid="OpenPaneDescription"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="Icon.16"/>
+                      <bt:Image size="32" resid="Icon.32"/>
+                      <bt:Image size="80" resid="Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="TaskPane.Url"/>
+                    </Action>
+                  </Control>
+                </Group>
+              </OfficeTab>
+            </ExtensionPoint>
+          </DesktopFormFactor>
+        </Host>
+      </Hosts>
+      <Resources>
+        <bt:Images>
+          <bt:Image id="Icon.16" DefaultValue="https://localhost/icon-80.png"/>
+          <bt:Image id="Icon.32" DefaultValue="https://localhost/icon-80.png"/>
+          <bt:Image id="Icon.80" DefaultValue="https://localhost/icon-80.png"/>
+        </bt:Images>
+        <bt:Urls>
+          <bt:Url id="Commands.Url" DefaultValue="https://localhost/commands.html"/>
+          <bt:Url id="TaskPane.Url" DefaultValue="https://localhost"/>
+        </bt:Urls>
+        <bt:ShortStrings>
+          <bt:String id="GroupLabel" DefaultValue="Ollie KI"/>
+          <bt:String id="OpenPaneLabel" DefaultValue="Ollie öffnen"/>
+          <bt:String id="AutoReplyLabel" DefaultValue="Antwort einfügen"/>
+        </bt:ShortStrings>
+        <bt:LongStrings>
+          <bt:String id="OpenPaneDescription" DefaultValue="Öffnet die Ollie Taskpane."/>
+          <bt:String id="AutoReplyDescription" DefaultValue="Generiert einen KI-Vorschlag und fügt ihn direkt in die Antwort ein."/>
+        </bt:LongStrings>
+      </Resources>
+    </VersionOverrides>
+  </VersionOverrides>
+</OfficeApp>

@@ -1,0 +1,25 @@
+{
+    # Globale Optionen
+    admin off
+}
+
+https://localhost {
+    # Caddy generiert sein eigenes Zertifikat (selbstsigniert)
+    tls internal
+
+    log {
+        output stdout
+    }
+
+    # API-Proxy zu FastAPI
+    handle_path /api* {
+        reverse_proxy backend:8000
+    }
+
+    # Statische Dateien & Frontend SPA Support
+    handle {
+        root * /usr/share/caddy
+        file_server
+        try_files {path} /index.html
+    }
+}

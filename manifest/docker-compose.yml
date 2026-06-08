@@ -1,0 +1,23 @@
+services:
+  backend:
+    image: ghcr.io/kevinqrt/ollie-outlook-llm-backend:latest
+    environment:
+      - ROOT_PATH=/api
+    volumes:
+      - ./backend/data:/app/backend/data
+      - ./chroma_db:/app/chroma_db
+
+  frontend:
+    image: ghcr.io/kevinqrt/ollie-outlook-llm-frontend:latest
+    ports:
+      - "80:80"   # HTTP für Redirects
+      - "443:443" # HTTPS (Standard)
+    volumes:
+      - caddy_data:/data
+    depends_on:
+      - backend
+
+volumes:
+  backend_data:
+  chroma_db:
+  caddy_data:

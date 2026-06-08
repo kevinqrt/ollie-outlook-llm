@@ -2,9 +2,8 @@ name: Docker Build and Publish
 
 on:
   push:
-    branches:
-      - main
-      - container-registry-publish
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 env:
@@ -53,15 +52,26 @@ jobs:
         env:
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
 
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME_LC }}-backend
+            ${{ env.REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME_LC }}-frontend
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=ref,event=tag
+            type=ref,event=branch
+
       - name: Build and push Backend image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME_LC }}-backend:latest
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
       - name: Build and push Frontend image
         uses: docker/build-push-action@v5
@@ -69,6 +79,5 @@ jobs:
           context: ./frontend
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME_LC }}-frontend:latest
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

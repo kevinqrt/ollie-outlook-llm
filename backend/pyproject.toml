@@ -1,6 +1,6 @@
 [project]
 name = "outlook-llm-backend"
-version = "0.1.0"
+version = "1.0.0"
 description = "Minimal FastAPI backend for an Outlook LLM project."
 requires-python = ">=3.11"
 dependencies = [

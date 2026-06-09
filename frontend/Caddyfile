@@ -12,7 +12,9 @@ https://localhost {
     }
 
     # API-Proxy zu FastAPI
-    handle_path /api* {
+    # Wir nutzen 'handle' statt 'handle_path', damit das Präfix /api erhalten bleibt.
+    # Dies ist notwendig, da das Backend ROOT_PATH=/api konfiguriert hat.
+    handle /api* {
         reverse_proxy backend:8000
     }
 

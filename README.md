@@ -31,9 +31,3 @@ Bei Backend-Änderungen: `just sync-openapi`
 ## 🧪 Testing
 
 *   **Outlook:** Manifest unter `manifest/manifest.xml` im Outlook Web-Client hochladen.
-
-## 🐳 Docker Deployment
-
-Für eine einfache Installation via Docker (ideal für Endnutzer) findest du alle Informationen in der separaten Anleitung:
-
-👉 **[README_DOCKER.md](./README_DOCKER.md)**

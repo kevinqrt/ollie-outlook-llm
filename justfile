@@ -30,3 +30,8 @@ sync-openapi:
     cd backend && uv run python -c "import json; from app.app import app; print(json.dumps(app.openapi(), indent=2))" > ../frontend/src/api/openapi.json
     @echo "Generating Frontend SDK..."
     cd frontend && npm run api:generate
+
+# Start a new release (updates version, changelog, tags and pushes to GitHub)
+release:
+    @chmod +x scripts/release.sh
+    ./scripts/release.sh

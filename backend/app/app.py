@@ -1,4 +1,5 @@
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
+        root_path=os.getenv("ROOT_PATH", ""),
     )
 
     app.add_middleware(

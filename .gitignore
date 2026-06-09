@@ -36,3 +36,4 @@ coverage/
 frontend/.vite/
 
 backend/chroma_db/
+certs/

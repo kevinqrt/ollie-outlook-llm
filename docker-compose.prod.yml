@@ -1,0 +1,29 @@
+services:
+  backend:
+    image: ghcr.io/kevinqrt/ollie-outlook-llm-backend:latest
+    restart: unless-stopped
+    environment:
+      - ROOT_PATH=/api
+      - RAG_SERVICE_URL=<your_service_url>
+      - LLM_MODEL=llama3.1:70b
+    volumes:
+      - ollie_backend_data:/app/backend/data
+      - ollie_chroma_db:/app/chroma_db
+
+  frontend:
+    image: ghcr.io/kevinqrt/ollie-outlook-llm-frontend:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"   # HTTP für Redirects
+      - "443:443" # HTTPS (Standard)
+    volumes:
+      - ollie_caddy_data:/data
+      - ollie_caddy_config:/config
+    depends_on:
+      - backend
+
+volumes:
+  ollie_backend_data:
+  ollie_chroma_db:
+  ollie_caddy_data:
+  ollie_caddy_config:

@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetEmailSuggestionData, GetEmailSuggestionErrors, GetEmailSuggestionResponses, GetHealthData, GetHealthResponses } from './types.gen';
+import type { GetEmailSuggestionData, GetEmailSuggestionErrors, GetEmailSuggestionResponses, GetHealthData, GetHealthResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -19,17 +19,33 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 };
 
 /**
- * Health check
+ * Check service availability
+ *
+ * Returns 'ok' status if the API service is running correctly.
  */
 export const getHealth = <ThrowOnError extends boolean = false>(options?: Options<GetHealthData, ThrowOnError>) => (options?.client ?? client).get<GetHealthResponses, unknown, ThrowOnError>({ url: '/api/health', ...options });
 
 /**
- * Antwortvorschlag generieren
+ * Generate AI email suggestion
  *
- * Liest eine E-Mail ein und erzeugt einen passenden Antwortvorschlag.
+ * Generate a professional AI-driven reply suggestion for an incoming email.
  */
 export const getEmailSuggestion = <ThrowOnError extends boolean = false>(options: Options<GetEmailSuggestionData, ThrowOnError>) => (options.client ?? client).post<GetEmailSuggestionResponses, GetEmailSuggestionErrors, ThrowOnError>({
     url: '/api/email/suggestion',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Generate AI email suggestion with live pipeline progress
+ *
+ * Generate a reply suggestion, streaming each pipeline step as it completes.
+ */
+export const streamEmailSuggestion = <ThrowOnError extends boolean = false>(options: Options<StreamEmailSuggestionData, ThrowOnError, StreamEmailSuggestionResponse>) => (options.client ?? client).sse.post<StreamEmailSuggestionResponses, StreamEmailSuggestionErrors, ThrowOnError>({
+    url: '/api/email/suggestion/stream',
     ...options,
     headers: {
         'Content-Type': 'application/json',

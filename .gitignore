@@ -34,3 +34,7 @@ venv/
 node_modules/
 coverage/
 frontend/.vite/
+
+# Local certs / logs
+certs/
+ollie.log

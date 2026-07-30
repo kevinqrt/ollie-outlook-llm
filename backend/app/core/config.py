@@ -17,6 +17,9 @@ class Settings(BaseSettings):
 
     rag_service_url: str = "http://127.0.0.1:8060"
     llm_model: str = "llama3.1:70b"
+    model_api_base_url: str | None = None
+    model_api_key: str | None = None
+    llm_max_tokens: int = 1024
     cors_origins: list[str] = ["*"]
     server_host: str = "localhost"
     server_port: int = 8000

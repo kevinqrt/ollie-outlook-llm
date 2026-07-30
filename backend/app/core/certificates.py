@@ -10,7 +10,7 @@ from pathlib import Path
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 from app.core.config import BASE_DIR
 from app.core.env_manager import write_env_values
@@ -51,6 +51,28 @@ def ensure_localhost_certificate() -> tuple[Path, Path]:
                     x509.IPAddress(ipaddress.ip_address("127.0.0.1")),
                 ]
             ),
+            critical=False,
+        )
+        .add_extension(
+            x509.BasicConstraints(ca=True, path_length=0),
+            critical=True,
+        )
+        .add_extension(
+            x509.KeyUsage(
+                digital_signature=True,
+                key_encipherment=True,
+                key_cert_sign=True,
+                content_commitment=False,
+                data_encipherment=False,
+                key_agreement=False,
+                crl_sign=True,
+                encipher_only=False,
+                decipher_only=False,
+            ),
+            critical=True,
+        )
+        .add_extension(
+            x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),
             critical=False,
         )
         .sign(key, hashes.SHA256())

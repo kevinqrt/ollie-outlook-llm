@@ -1,73 +1,54 @@
-import { getEmailSuggestion } from '../api';
+import { streamEmailSuggestion } from '../api';
+import { isPipelineEvent, type PipelineEvent } from '../api/pipelineEvents';
 import { officeService } from './officeService';
 
-function describeRequestError(error: unknown): string {
-  if (!error) {
-    return 'Unbekannter Fehler beim Abruf der Antwort.';
-  }
-
-  if (typeof error === 'string') {
-    return error;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === 'object') {
-    const maybeError = error as {
-      detail?: unknown;
-      message?: unknown;
-      error?: unknown;
-      response?: { status?: number; statusText?: string };
-    };
-
-    if (typeof maybeError.detail === 'string') {
-      return maybeError.detail;
-    }
-    if (typeof maybeError.message === 'string') {
-      return maybeError.message;
-    }
-    if (typeof maybeError.error === 'string') {
-      return maybeError.error;
-    }
-    if (maybeError.response?.status) {
-      const statusText = maybeError.response.statusText
-        ? ` ${maybeError.response.statusText}`
-        : '';
-      return `HTTP ${maybeError.response.status}${statusText}`.trim();
-    }
-  }
-
-  return 'Unbekannter Fehler beim Abruf der Antwort.';
-}
+export type PipelineProgressHandler = (event: PipelineEvent) => void;
 
 /**
  * Der zentrale KI-Antwort-Workflow.
+ *
+ * Streamt die Pipeline-Schritte (Planung, Teilschritte, Ergebnis) live über
+ * SSE, damit der Aufrufer (z. B. die Taskpane-UI) den Fortschritt anzeigen
+ * kann, statt nur auf das Endergebnis zu warten.
  */
-export async function runReplyWorkflow() {
+export async function runReplyWorkflow(onProgress?: PipelineProgressHandler) {
   try {
     officeService.showNotification('Anfrage wird bearbeitet...');
 
     // 1. Kontext lesen
     const content = await officeService.getBodyText();
 
-    // 2. KI-Vorschlag holen
-    const { data, error } = await getEmailSuggestion({
+    // 2. Pipeline streamen
+    const { stream } = await streamEmailSuggestion({
       body: { emailContent: content },
     });
 
-    if (error || !data?.suggestedReply) {
-      throw new Error(error ? describeRequestError(error) : 'Kein Vorschlag generiert');
+    let finalReply: string | undefined;
+
+    for await (const raw of stream) {
+      if (!isPipelineEvent(raw)) {
+        continue;
+      }
+
+      onProgress?.(raw);
+
+      if (raw.type === 'error') {
+        throw new Error(raw.detail);
+      }
+      if (raw.type === 'done') {
+        finalReply = raw.finalReply;
+      }
     }
 
-    const { suggestedReply } = data;
+    if (!finalReply) {
+      throw new Error('Kein Vorschlag generiert');
+    }
 
     // 3. Aktion ausführen
     if (officeService.isComposeMode()) {
-      await officeService.insertText(suggestedReply);
+      await officeService.insertText(finalReply);
     } else {
-      officeService.displayReply(suggestedReply);
+      officeService.displayReply(finalReply);
     }
 
     officeService.showNotification('Abgeschlossen');

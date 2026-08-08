@@ -157,6 +157,29 @@ def test_malformed_plan_falls_back_to_default_steps():
     assert events[-1].final_reply == "Finale Antwort"
 
 
+def test_step_falls_back_to_plain_call_when_agent_returns_empty_content():
+    # gpt-oss liefert über den DGX-Tunnel bei gebundenen Tools manchmal leeren
+    # Inhalt zurück (finish_reason='stop', aber kein Text). Nach MAX_STEP_ATTEMPTS
+    # erfolglosen Agent-Versuchen soll auf einen Aufruf ohne Tool umgeschaltet werden.
+    fake_model = _FakeChatModel(
+        responses=[
+            AIMessage(content='["Nur ein Schritt"]'),
+            AIMessage(content=""),
+            AIMessage(content=""),
+            AIMessage(content="Fallback-Antwort ohne Tool."),
+        ]
+    )
+
+    with patched_pipeline(fake_model):
+        events = _run("Testmail")
+
+    step_completed = [e for e in events if e.type == "step_completed"]
+    assert len(step_completed) == 1
+    assert step_completed[0].result == "Fallback-Antwort ohne Tool."
+    assert events[-1].type == "done"
+    assert events[-1].final_reply == "Fallback-Antwort ohne Tool."
+
+
 def test_error_mid_pipeline_yields_error_event_and_still_cleans_up_session():
     fake_model = _FakeChatModel(responses=[AIMessage(content='["Nur ein Schritt"]')])
 

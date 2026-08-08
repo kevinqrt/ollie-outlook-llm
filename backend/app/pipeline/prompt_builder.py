@@ -27,6 +27,9 @@ def build_step_prompt(step_description: str, *, is_final: bool) -> str:
     base = (
         f"Bearbeite folgenden Teilschritt bei der Beantwortung der E-Mail aus dem Kontext:\n"
         f"'{step_description}'\n\n"
+        "Dir steht das Tool 'search_email_context' zur Verfügung, um Aussagen aus der "
+        "E-Mail zu verifizieren (z. B. Termine, Zusagen, genannte Fakten). Nutze es bei "
+        "Unsicherheit, statt zu raten oder Informationen zu erfinden.\n\n"
     )
 
     if not is_final:

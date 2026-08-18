@@ -49,7 +49,7 @@ def test_get_email_suggestion_service_error(client):
 
     email_content = "Hello"
 
-    with patch("app.api.router.LlmService.generate_suggestion") as mock_gen:
+    with patch("app.services.llm_service.LlmService.generate_suggestion") as mock_gen:
         mock_gen.side_effect = LlmServiceError("RAG Service request failed")
 
         # WHEN

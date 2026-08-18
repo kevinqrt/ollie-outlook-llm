@@ -11,10 +11,10 @@ from app.services.vector_store_service import VectorStoreService
 
 
 @pytest.mark.anyio
-async def test_generate_suggestion_success():
+async def test_generate_suggestion_success(properly_constructed_llm_service):
     """Tests successful suggestion generation from RAG service"""
     # GIVEN
-    service = LlmService()
+    service = properly_constructed_llm_service
     email_text = "Hello"
     mock_response = MagicMock()
     mock_response.additional_properties = {"reply": "Mocked AI reply"}
@@ -30,10 +30,10 @@ async def test_generate_suggestion_success():
 
 
 @pytest.mark.anyio
-async def test_generate_suggestion_no_response():
+async def test_generate_suggestion_no_response(properly_constructed_llm_service):
     """Tests handling when RAG service returns None"""
     # GIVEN
-    service = LlmService()
+    service = properly_constructed_llm_service
 
     with patch("app.services.llm_service.direct_query.asyncio") as mock_direct_query:
         mock_direct_query.return_value = None
@@ -44,10 +44,10 @@ async def test_generate_suggestion_no_response():
 
 
 @pytest.mark.anyio
-async def test_generate_suggestion_validation_error():
+async def test_generate_suggestion_validation_error(properly_constructed_llm_service):
     """Tests handling when RAG service returns a validation error"""
     # GIVEN
-    service = LlmService()
+    service = properly_constructed_llm_service
     mock_error = HTTPValidationError(
         detail=[{"msg": "Invalid request", "type": "value_error", "loc": []}]
     )
@@ -61,10 +61,10 @@ async def test_generate_suggestion_validation_error():
 
 
 @pytest.mark.anyio
-async def test_generate_suggestion_general_exception():
+async def test_generate_suggestion_general_exception(properly_constructed_llm_service):
     """Tests handling of general exceptions during RAG service call"""
     # GIVEN
-    service = LlmService()
+    service = properly_constructed_llm_service
 
     with patch("app.services.llm_service.direct_query.asyncio") as mock_direct_query:
         mock_direct_query.side_effect = Exception("Connection error")
@@ -76,9 +76,7 @@ async def test_generate_suggestion_general_exception():
 
 @pytest.fixture
 def properly_constructed_llm_service() -> LlmService:
-    """A correctly constructed LlmService (see memory: the `LlmService()` calls
-    above pre-date the `vector_store`/`prompt_service` constructor args and are
-    a known, pre-existing, out-of-scope failure - don't copy that pattern)."""
+    """An LlmService with mocked vector_store/prompt_service constructor args."""
     vector_store = MagicMock(spec=VectorStoreService)
     vector_store.search = AsyncMock(return_value=[])
     prompt_service = MagicMock(spec=PromptService)

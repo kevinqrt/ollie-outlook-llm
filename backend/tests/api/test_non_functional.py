@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import status
@@ -21,7 +21,7 @@ def test_input_validation_security(client):
     # GIVEN
     large_input = "A" * 1_000_000  # 1MB of text
 
-    with patch("app.api.router.LlmService.generate_suggestion") as mock_gen:
+    with patch("app.services.llm_service.LlmService.generate_suggestion") as mock_gen:
         mock_gen.return_value = "Reply"
 
         # WHEN
@@ -35,9 +35,14 @@ def test_input_validation_security(client):
 def test_llm_service_timeout_handling():
     """Verifies that the LlmService has a timeout configured for RAG requests."""
     from app.services.llm_service import LlmService
+    from app.services.prompt_service import PromptService
+    from app.services.vector_store_service import VectorStoreService
 
     # WHEN
-    service = LlmService()
+    service = LlmService(
+        vector_store=MagicMock(spec=VectorStoreService),
+        prompt_service=MagicMock(spec=PromptService),
+    )
 
     # THEN
     assert service.client._timeout.read == 60.0

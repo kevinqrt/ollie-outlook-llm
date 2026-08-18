@@ -18,6 +18,8 @@ dependencies = [
     "sentence-transformers>=3.0.0",
     "tokenizers>=0.22.0,<=0.23.0",
     "python-multipart>=0.0.9",
+    "langchain-openai>=1.4.0,<2.0",
+    "langgraph>=1.2.0,<2.0",
 ]
 
 [dependency-groups]
@@ -66,7 +68,6 @@ members = [
 
 [tool.uv]
 index-url = "https://pypi.org/simple"
-extra-index-url = ["https://download.pytorch.org/whl/cpu"]
 
 [tool.uv.sources]
 rag-service-api = { workspace = true }

@@ -1,6 +1,8 @@
+from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 
 from app.api.schemas.chat_schema import ChatRequestSchema, ChatResponseSchema
 from app.api.schemas.email_schema import (
@@ -15,6 +17,7 @@ from app.api.schemas.knowledge_schema import (
     KnowledgeUploadResponseSchema,
 )
 from app.core.dependencies import LlmServiceDep, VectorStoreServiceDep
+from app.pipeline import run_pipeline
 from app.services.llm_service import LlmServiceError
 
 api_router = APIRouter()
@@ -79,6 +82,27 @@ async def get_email_suggestion(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
+
+
+@api_router.post(
+    "/email/suggestion/stream",
+    response_class=StreamingResponse,
+    summary="Generate AI email suggestion with live pipeline progress",
+    response_description="SSE stream of pipeline steps, ending in a done or error event",
+    responses={200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}}},
+    tags=["email"],
+    operation_id="streamEmailSuggestion",
+)
+async def stream_email_suggestion(
+    payload: EmailSuggestionRequestSchema,
+) -> StreamingResponse:
+    """Generate a reply suggestion, streaming each pipeline step as it completes."""
+
+    async def event_stream() -> AsyncIterator[str]:
+        async for event in run_pipeline(payload.email_content):
+            yield f"data: {event.model_dump_json(by_alias=True)}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @api_router.post(

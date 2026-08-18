@@ -284,6 +284,31 @@ export type GetEmailSuggestionResponses = {
 
 export type GetEmailSuggestionResponse = GetEmailSuggestionResponses[keyof GetEmailSuggestionResponses];
 
+export type StreamEmailSuggestionData = {
+    body: EmailSuggestionRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/email/suggestion/stream';
+};
+
+export type StreamEmailSuggestionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StreamEmailSuggestionError = StreamEmailSuggestionErrors[keyof StreamEmailSuggestionErrors];
+
+export type StreamEmailSuggestionResponses = {
+    /**
+     * SSE stream of pipeline steps, ending in a done or error event
+     */
+    200: string;
+};
+
+export type StreamEmailSuggestionResponse = StreamEmailSuggestionResponses[keyof StreamEmailSuggestionResponses];
+
 export type UploadPdfKnowledgePdfPostData = {
     body: BodyUploadPdfKnowledgePdfPost;
     path?: never;

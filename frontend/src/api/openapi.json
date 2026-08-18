@@ -115,6 +115,48 @@
         }
       }
     },
+    "/email/suggestion/stream": {
+      "post": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Generate AI email suggestion with live pipeline progress",
+        "description": "Generate a reply suggestion, streaming each pipeline step as it completes.",
+        "operationId": "streamEmailSuggestion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailSuggestionRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "SSE stream of pipeline steps, ending in a done or error event",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/knowledge/pdf": {
       "post": {
         "tags": [

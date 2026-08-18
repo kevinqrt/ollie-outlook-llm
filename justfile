@@ -14,6 +14,10 @@ backend:
 generate-rag-client:
     cd backend/packages/rag_service_api && rm -rf rag_service_api/generated && uv run openapi-python-client generate --path openapi.json --output-path rag_service_api/generated --meta none --overwrite
 
+[group('backend')]
+mcp-server:
+    cd backend && uv run python -m app.mcp_server
+
 [group('frontend')]
 frontend:
     cd frontend && npm run dev

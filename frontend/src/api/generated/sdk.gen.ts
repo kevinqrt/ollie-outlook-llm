@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, GetEmailSuggestionData, GetEmailSuggestionErrors, GetEmailSuggestionResponses, GetHealthData, GetHealthResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostChatData, PostChatErrors, PostChatResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
+import type { DeleteCalendarIcsKnownData, DeleteCalendarIcsKnownErrors, DeleteCalendarIcsKnownResponses, DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, GetCalendarAuthLoginData, GetCalendarAuthLoginErrors, GetCalendarAuthLoginResponses, GetCalendarAuthStatusData, GetCalendarAuthStatusResponses, GetCalendarEventsData, GetCalendarEventsErrors, GetCalendarEventsResponses, GetCalendarIcsKnownData, GetCalendarIcsKnownErrors, GetCalendarIcsKnownResponses, GetCalendarIcsStatusData, GetCalendarIcsStatusErrors, GetCalendarIcsStatusResponses, GetEmailSuggestionData, GetEmailSuggestionErrors, GetEmailSuggestionResponses, GetHealthData, GetHealthResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostCalendarAuthCallbackData, PostCalendarAuthCallbackErrors, PostCalendarAuthCallbackResponses, PostCalendarIcsKnownData, PostCalendarIcsKnownErrors, PostCalendarIcsKnownResponses, PostCalendarIcsSelfData, PostCalendarIcsSelfErrors, PostCalendarIcsSelfResponses, PostCalendarMeetingTimesData, PostCalendarMeetingTimesErrors, PostCalendarMeetingTimesResponses, PostChatData, PostChatErrors, PostChatResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -29,6 +29,9 @@ export const getHealth = <ThrowOnError extends boolean = false>(options?: Option
  * Classical LLM chat
  *
  * Provide a classical chat interface with history and RAG context.
+ *
+ * If the latest user message contains a meeting request, the reply is
+ * augmented with real calendar availability and a concrete meeting proposal.
  */
 export const postChat = <ThrowOnError extends boolean = false>(options: Options<PostChatData, ThrowOnError>) => (options.client ?? client).post<PostChatResponses, PostChatErrors, ThrowOnError>({
     url: '/chat',
@@ -43,6 +46,9 @@ export const postChat = <ThrowOnError extends boolean = false>(options: Options<
  * Generate AI email suggestion
  *
  * Generate a professional AI-driven reply suggestion for an incoming email.
+ *
+ * If the email contains a meeting request and the calendar is connected, the
+ * suggestion is augmented with real availability so it can propose concrete times.
  */
 export const getEmailSuggestion = <ThrowOnError extends boolean = false>(options: Options<GetEmailSuggestionData, ThrowOnError>) => (options.client ?? client).post<GetEmailSuggestionResponses, GetEmailSuggestionErrors, ThrowOnError>({
     url: '/email/suggestion',
@@ -80,3 +86,88 @@ export const listDocumentsKnowledgeDocumentsGet = <ThrowOnError extends boolean 
  * Delete a document from the knowledge base
  */
 export const deleteDocumentKnowledgeDocumentsFilenameDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteDocumentKnowledgeDocumentsFilenameDeleteData, ThrowOnError>) => (options.client ?? client).delete<DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, ThrowOnError>({ url: '/knowledge/documents/{filename}', ...options });
+
+/**
+ * Get the Microsoft login URL to connect the calendar
+ */
+export const getCalendarAuthLogin = <ThrowOnError extends boolean = false>(options?: Options<GetCalendarAuthLoginData, ThrowOnError>) => (options?.client ?? client).get<GetCalendarAuthLoginResponses, GetCalendarAuthLoginErrors, ThrowOnError>({ url: '/calendar/auth/login', ...options });
+
+/**
+ * Exchange an OAuth authorization code for Graph tokens
+ */
+export const postCalendarAuthCallback = <ThrowOnError extends boolean = false>(options: Options<PostCalendarAuthCallbackData, ThrowOnError>) => (options.client ?? client).post<PostCalendarAuthCallbackResponses, PostCalendarAuthCallbackErrors, ThrowOnError>({
+    url: '/calendar/auth/callback',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Check whether the calendar is connected
+ */
+export const getCalendarAuthStatus = <ThrowOnError extends boolean = false>(options?: Options<GetCalendarAuthStatusData, ThrowOnError>) => (options?.client ?? client).get<GetCalendarAuthStatusResponses, unknown, ThrowOnError>({ url: '/calendar/auth/status', ...options });
+
+/**
+ * List calendar events in a date range
+ */
+export const getCalendarEvents = <ThrowOnError extends boolean = false>(options: Options<GetCalendarEventsData, ThrowOnError>) => (options.client ?? client).get<GetCalendarEventsResponses, GetCalendarEventsErrors, ThrowOnError>({ url: '/calendar/events', ...options });
+
+/**
+ * Find meeting times that work for all given attendees
+ *
+ * Find slots where every given attendee (plus the signed-in user) is free.
+ *
+ * Only works for attendees within the same Microsoft 365 tenant, since
+ * Microsoft Graph has no visibility into external/private calendars.
+ */
+export const postCalendarMeetingTimes = <ThrowOnError extends boolean = false>(options: Options<PostCalendarMeetingTimesData, ThrowOnError>) => (options.client ?? client).post<PostCalendarMeetingTimesResponses, PostCalendarMeetingTimesErrors, ThrowOnError>({
+    url: '/calendar/meeting-times',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Check whether an own ICS calendar link is configured
+ */
+export const getCalendarIcsStatus = <ThrowOnError extends boolean = false>(options?: Options<GetCalendarIcsStatusData, ThrowOnError>) => (options?.client ?? client).get<GetCalendarIcsStatusResponses, GetCalendarIcsStatusErrors, ThrowOnError>({ url: '/calendar/ics/status', ...options });
+
+/**
+ * Set the signed-in user's own published-calendar ICS URL
+ *
+ * Validate the given ICS feed URL by fetching it, then store it as "my calendar".
+ */
+export const postCalendarIcsSelf = <ThrowOnError extends boolean = false>(options: Options<PostCalendarIcsSelfData, ThrowOnError>) => (options.client ?? client).post<PostCalendarIcsSelfResponses, PostCalendarIcsSelfErrors, ThrowOnError>({
+    url: '/calendar/ics/self',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List known calendar links of other people
+ */
+export const getCalendarIcsKnown = <ThrowOnError extends boolean = false>(options?: Options<GetCalendarIcsKnownData, ThrowOnError>) => (options?.client ?? client).get<GetCalendarIcsKnownResponses, GetCalendarIcsKnownErrors, ThrowOnError>({ url: '/calendar/ics/known', ...options });
+
+/**
+ * Save another person's published-calendar ICS URL
+ */
+export const postCalendarIcsKnown = <ThrowOnError extends boolean = false>(options: Options<PostCalendarIcsKnownData, ThrowOnError>) => (options.client ?? client).post<PostCalendarIcsKnownResponses, PostCalendarIcsKnownErrors, ThrowOnError>({
+    url: '/calendar/ics/known',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove a saved calendar link
+ */
+export const deleteCalendarIcsKnown = <ThrowOnError extends boolean = false>(options: Options<DeleteCalendarIcsKnownData, ThrowOnError>) => (options.client ?? client).delete<DeleteCalendarIcsKnownResponses, DeleteCalendarIcsKnownErrors, ThrowOnError>({ url: '/calendar/ics/known/{email}', ...options });

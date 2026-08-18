@@ -34,7 +34,7 @@
           "chat"
         ],
         "summary": "Classical LLM chat",
-        "description": "Provide a classical chat interface with history and RAG context.",
+        "description": "Provide a classical chat interface with history and RAG context.\n\nIf the latest user message contains a meeting request, the reply is\naugmented with real calendar availability and a concrete meeting proposal.",
         "operationId": "postChat",
         "requestBody": {
           "content": {
@@ -53,6 +53,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ChatResponseSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
                 }
               }
             }
@@ -76,7 +86,7 @@
           "email"
         ],
         "summary": "Generate AI email suggestion",
-        "description": "Generate a professional AI-driven reply suggestion for an incoming email.",
+        "description": "Generate a professional AI-driven reply suggestion for an incoming email.\n\nIf the email contains a meeting request and the calendar is connected, the\nsuggestion is augmented with real availability so it can propose concrete times.",
         "operationId": "getEmailSuggestion",
         "requestBody": {
           "content": {
@@ -264,10 +274,482 @@
           }
         }
       }
+    },
+    "/calendar/auth/login": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Get the Microsoft login URL to connect the calendar",
+        "operationId": "getCalendarAuthLogin",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUrlSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Graph not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/auth/callback": {
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Exchange an OAuth authorization code for Graph tokens",
+        "operationId": "postCalendarAuthCallback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthCallbackRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStatusSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Token exchange failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/auth/status": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Check whether the calendar is connected",
+        "operationId": "getCalendarAuthStatus",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStatusSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/events": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "List calendar events in a date range",
+        "operationId": "getCalendarEvents",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEventListSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Graph API unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/meeting-times": {
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Find meeting times that work for all given attendees",
+        "description": "Find slots where every given attendee (plus the signed-in user) is free.\n\nOnly works for attendees within the same Microsoft 365 tenant, since\nMicrosoft Graph has no visibility into external/private calendars.",
+        "operationId": "postCalendarMeetingTimes",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindMeetingTimesRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingTimeSuggestionListSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Graph API unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/ics/status": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Check whether an own ICS calendar link is configured",
+        "operationId": "getCalendarIcsStatus",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IcsStatusSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "ICS backend not active",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/ics/self": {
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Set the signed-in user's own published-calendar ICS URL",
+        "description": "Validate the given ICS feed URL by fetching it, then store it as \"my calendar\".",
+        "operationId": "postCalendarIcsSelf",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSelfIcsUrlRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IcsStatusSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "URL not reachable/parseable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "ICS backend not active",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/ics/known": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "List known calendar links of other people",
+        "operationId": "getCalendarIcsKnown",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnownCalendarListSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "ICS backend not active",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Save another person's published-calendar ICS URL",
+        "operationId": "postCalendarIcsKnown",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetKnownIcsUrlRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnownCalendarListSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "URL not reachable/parseable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "ICS backend not active",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/ics/known/{email}": {
+      "delete": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Remove a saved calendar link",
+        "operationId": "deleteCalendarIcsKnown",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnownCalendarListSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "ICS backend not active",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AuthCallbackRequestSchema": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "AuthCallbackRequestSchema"
+      },
+      "AuthStatusSchema": {
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "title": "Authenticated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "authenticated"
+        ],
+        "title": "AuthStatusSchema"
+      },
+      "AuthUrlSchema": {
+        "properties": {
+          "authUrl": {
+            "type": "string",
+            "title": "Authurl"
+          }
+        },
+        "type": "object",
+        "required": [
+          "authUrl"
+        ],
+        "title": "AuthUrlSchema"
+      },
       "Body_upload_pdf_knowledge_pdf_post": {
         "properties": {
           "file": {
@@ -281,6 +763,68 @@
           "file"
         ],
         "title": "Body_upload_pdf_knowledge_pdf_post"
+      },
+      "CalendarEventListSchema": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarEventSchema"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "title": "CalendarEventListSchema"
+      },
+      "CalendarEventSchema": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "organizer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organizer"
+          },
+          "isOrganizer": {
+            "type": "boolean",
+            "title": "Isorganizer",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "subject",
+          "start",
+          "end"
+        ],
+        "title": "CalendarEventSchema"
       },
       "ChatMessageSchema": {
         "properties": {
@@ -325,6 +869,17 @@
             "type": "string",
             "title": "Reply",
             "description": "The AI-generated reply"
+          },
+          "meetingProposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeetingProposalSchema"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A concrete meeting suggestion, if the message contained a meeting request."
           }
         },
         "type": "object",
@@ -343,6 +898,19 @@
             "examples": [
               "Hello, can we move the meeting tomorrow to 2 PM? Best regards, Max"
             ]
+          },
+          "attendees": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Attendees",
+            "description": "Email addresses of the other recipients (To/Cc), used to check everyone's calendar availability for meeting-time suggestions.",
+            "examples": [
+              [
+                "alice@contoso.com"
+              ]
+            ]
           }
         },
         "type": "object",
@@ -360,6 +928,17 @@
             "examples": [
               "Hello Max,\n\nyes, 2 PM works for me. See you tomorrow!\n\nBest regards"
             ]
+          },
+          "meetingProposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeetingProposalSchema"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A concrete meeting suggestion, if the email contained a meeting request."
           }
         },
         "type": "object",
@@ -384,6 +963,42 @@
           "detail"
         ],
         "title": "ErrorResponseSchema"
+      },
+      "FindMeetingTimesRequestSchema": {
+        "properties": {
+          "attendees": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Attendees",
+            "description": "Email addresses of attendees whose calendars should be considered.",
+            "examples": [
+              [
+                "alice@contoso.com",
+                "bob@contoso.com"
+              ]
+            ]
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Durationminutes",
+            "default": 30
+          },
+          "lookaheadDays": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Lookaheaddays",
+            "default": 7
+          }
+        },
+        "type": "object",
+        "required": [
+          "attendees"
+        ],
+        "title": "FindMeetingTimesRequestSchema"
       },
       "HTTPValidationError": {
         "properties": {
@@ -414,6 +1029,19 @@
           "status"
         ],
         "title": "HealthResponseSchema"
+      },
+      "IcsStatusSchema": {
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "title": "Configured"
+          }
+        },
+        "type": "object",
+        "required": [
+          "configured"
+        ],
+        "title": "IcsStatusSchema"
       },
       "KnowledgeDocumentListSchema": {
         "properties": {
@@ -502,6 +1130,157 @@
           "filename"
         ],
         "title": "KnowledgeUploadResponseSchema"
+      },
+      "KnownCalendarListSchema": {
+        "properties": {
+          "calendars": {
+            "items": {
+              "$ref": "#/components/schemas/KnownCalendarSchema"
+            },
+            "type": "array",
+            "title": "Calendars"
+          }
+        },
+        "type": "object",
+        "required": [
+          "calendars"
+        ],
+        "title": "KnownCalendarListSchema"
+      },
+      "KnownCalendarSchema": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "url"
+        ],
+        "title": "KnownCalendarSchema"
+      },
+      "MeetingProposalSchema": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body",
+            "default": ""
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "attendees": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Attendees"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "start",
+          "end"
+        ],
+        "title": "MeetingProposalSchema",
+        "description": "A concrete, ready-to-create meeting suggestion for the Outlook compose form."
+      },
+      "MeetingTimeSuggestionListSchema": {
+        "properties": {
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/MeetingTimeSuggestionSchema"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "suggestions"
+        ],
+        "title": "MeetingTimeSuggestionListSchema"
+      },
+      "MeetingTimeSuggestionSchema": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "confidence"
+        ],
+        "title": "MeetingTimeSuggestionSchema"
+      },
+      "SetKnownIcsUrlRequestSchema": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "examples": [
+              "https://outlook.office.com/owa/calendar/def456/calendar.ics"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "url"
+        ],
+        "title": "SetKnownIcsUrlRequestSchema"
+      },
+      "SetSelfIcsUrlRequestSchema": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Published Outlook calendar ICS feed URL (Outlook web -> Settings -> Calendar -> Shared calendars -> Publish a calendar).",
+            "examples": [
+              "https://outlook.office.com/owa/calendar/abc123/calendar.ics"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "SetSelfIcsUrlRequestSchema"
       },
       "ValidationError": {
         "properties": {

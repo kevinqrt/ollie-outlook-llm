@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
+import type { MeetingProposalSchema } from './api/generated';
 import { ChatAssistant } from './components/ChatAssistant';
 import { KnowledgeBase } from './components/KnowledgeBase';
 import { useNotification } from './context/NotificationContext';
+import { openCalendarComposeWindow } from './services/calendarWorkflow';
 import { officeService } from './services/officeService';
 import { runReplyWorkflow } from './services/replyWorkflow';
 import './App.css';
@@ -12,6 +14,8 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>('assistant');
   const [isCompose, setIsCompose] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [meetingProposal, setMeetingProposal] =
+    useState<MeetingProposalSchema | null>(null);
   const { notify, removeNotification } = useNotification();
   const loadingNotificationId = useRef<string | null>(null);
 
@@ -24,6 +28,19 @@ function App() {
       console.warn('Office JS not found, running in browser mode.');
     }
   }, []);
+
+  function handleOpenAppointment(proposal: MeetingProposalSchema) {
+    try {
+      openCalendarComposeWindow(proposal);
+    } catch (error) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : 'Kalenderfenster konnte nicht geöffnet werden.';
+      notify(msg, 'error');
+      console.error('Open calendar compose window error:', error);
+    }
+  }
 
   function handleAction() {
     startTransition(async () => {
@@ -39,7 +56,8 @@ function App() {
       );
 
       try {
-        await runReplyWorkflow();
+        const result = await runReplyWorkflow();
+        setMeetingProposal(result.meetingProposal ?? null);
         if (loadingNotificationId.current) {
           removeNotification(loadingNotificationId.current);
           loadingNotificationId.current = null;
@@ -47,6 +65,7 @@ function App() {
         notify('Vorschlag erfolgreich eingefügt!', 'success');
       } catch (error) {
         console.error('Workflow error:', error);
+        setMeetingProposal(null);
 
         if (loadingNotificationId.current) {
           removeNotification(loadingNotificationId.current);
@@ -120,6 +139,15 @@ function App() {
               >
                 {isPending ? 'Generiere...' : 'Antwort einfügen'}
               </button>
+              {meetingProposal && (
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => handleOpenAppointment(meetingProposal)}
+                >
+                  📅 Termin im Kalender öffnen
+                </button>
+              )}
             </div>
           ) : (
             <div className="info-card">

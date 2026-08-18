@@ -1,10 +1,12 @@
 import logging
+from datetime import UTC, datetime
 
 import httpx
 from rag_service_api import Client, DirectQueryRequest, HTTPValidationError, direct_query
 
 from app.api.schemas.chat_schema import ChatMessageSchema
 from app.core.config import settings
+from app.core.datetime_utils import format_datetime_de
 from app.services.prompt_service import PromptService
 from app.services.vector_store_service import VectorStoreService
 
@@ -25,6 +27,17 @@ class LlmService:
             raise_on_unexpected_status=True,
         )
 
+    @staticmethod
+    def _today_line() -> str:
+        """A 'today is ...' anchor so the model can relate relative dates
+
+        (e.g. "morgen", "heute") in the user's message to concrete calendar
+        dates. Always included, regardless of whether calendar data is
+        available, since knowing the current date is baseline context for
+        any request - not just meeting-scheduling ones.
+        """
+        return f"Heute ist {format_datetime_de(datetime.now(UTC))} Uhr."
+
     async def _get_kb_context(
         self,
         query: str,
@@ -39,10 +52,12 @@ class LlmService:
             return ""
         return f"\n\n{header}\n" + "\n".join([r.content for r in results])
 
-    async def generate_suggestion(self, email_text: str) -> str:
+    async def generate_suggestion(self, email_text: str, extra_context: str = "") -> str:
         """Call the RAG service to obtain an AI-generated answer suggestion.
 
         Retrieves additional context from the local vector store if available.
+        `extra_context` (e.g. calendar availability) is appended verbatim, mirroring
+        how `kb_context` is folded into the request.
 
         Raises:
             LlmServiceError: If communication with the RAG service fails or
@@ -56,7 +71,7 @@ class LlmService:
         query_text = self.prompt_service.get_reply_prompt(email_text)
 
         request_body = DirectQueryRequest(
-            documents_text=(email_text + kb_context) or "No content available.",
+            documents_text=f"{self._today_line()}\n\n{email_text}{kb_context}{extra_context}",
             query=query_text,
             llm_model=settings.llm_model,
         )
@@ -88,10 +103,12 @@ class LlmService:
             )
             raise LlmServiceError(f"RAG Service request failed: {exc}") from exc
 
-    async def chat(self, messages: list[ChatMessageSchema]) -> str:
+    async def chat(self, messages: list[ChatMessageSchema], extra_context: str = "") -> str:
         """Process a conversation history and return an AI-generated reply.
 
         Integrates context from the knowledge base based on the latest user message.
+        `extra_context` (e.g. calendar availability) is appended verbatim, mirroring
+        how it is folded into `generate_suggestion`.
         """
         if not messages:
             return "No messages provided."
@@ -114,7 +131,7 @@ class LlmService:
             conversation_history += f"{role_name}: {msg.content}\n"
 
         request_body = DirectQueryRequest(
-            documents_text=kb_context or "No additional context available.",
+            documents_text=f"{self._today_line()}{kb_context}{extra_context}",
             query=conversation_history + "\nAssistant:",
             llm_model=settings.llm_model,
         )

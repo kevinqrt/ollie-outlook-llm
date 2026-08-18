@@ -6,6 +6,90 @@
   position: relative;
 }
 
+.calendar-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  background-color: #f3f2f1;
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
+.calendar-status-text {
+  color: var(--text-muted);
+}
+
+.calendar-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background-color: #f3f2f1;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.calendar-settings-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.calendar-settings-subheading {
+  margin: 4px 0 0;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.calendar-settings-row {
+  display: flex;
+  gap: 6px;
+}
+
+.calendar-settings-row input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+}
+
+.known-calendar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.known-calendar-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px;
+  background-color: var(--card-bg);
+  border-radius: 4px;
+}
+
+.known-calendar-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.known-calendar-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .chat-header-actions {
   display: flex;
   justify-content: flex-end;
@@ -91,6 +175,22 @@
     opacity: 1;
     transform: translate(-50%, 0);
   }
+}
+
+.meeting-proposal-button {
+  display: block;
+  margin-top: 8px;
+  padding: 6px 12px;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.meeting-proposal-button:hover {
+  background: var(--primary-dark);
 }
 
 .message-bubble.user {

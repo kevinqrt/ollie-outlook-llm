@@ -18,6 +18,11 @@ dependencies = [
     "sentence-transformers>=3.0.0",
     "tokenizers>=0.22.0,<=0.23.0",
     "python-multipart>=0.0.9",
+    "msal>=1.31.0",
+    "mcp>=1.2.0",
+    "tzdata>=2024.1",
+    "icalendar>=6.0.0",
+    "recurring-ical-events>=3.0.0",
 ]
 
 [dependency-groups]
@@ -39,8 +44,8 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "C4", "UP", "ARG", "PTH", "SIM", "RUF", "S", "DTZ", "PGH", "TID", "FA", "PT"]
 [tool.ruff.lint.per-file-ignores]
-# In tests, it's okay to use asserts (S101)
-"tests/**" = ["S101"]
+# In tests, it's okay to use asserts (S101) and mock tokens/secrets (S105)
+"tests/**" = ["S101", "S105"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -49,6 +54,10 @@ docstring-code-format = true
 python_version = "3.13"
 files = ["app"]
 strict = true
+
+[[tool.mypy.overrides]]
+module = "msal.*"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -47,9 +47,7 @@ def patched_pipeline(fake_model: FakeMessagesListChatModel):
     query_session = AsyncMock()
 
     with ExitStack() as stack:
-        stack.enter_context(
-            patch.object(orchestrator, "build_chat_model", return_value=fake_model)
-        )
+        stack.enter_context(patch.object(orchestrator, "build_chat_model", return_value=fake_model))
         stack.enter_context(
             patch.object(orchestrator.rag_client, "build_client", return_value=fake_rag_client)
         )

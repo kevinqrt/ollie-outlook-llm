@@ -18,7 +18,7 @@ def build_planning_prompt() -> str:
         "abgegrenzte, sinnvolle Teilschritte (z. B. Kernfragen identifizieren, "
         "Antwortpunkte entwerfen, Antwort formulieren).\n\n"
         "Antworte AUSSCHLIESSLICH als JSON-Array von Strings, ohne weiteren Text, ohne "
-        "Markdown-Codeblock. Beispiel: [\"Kernfragen identifizieren\", \"Antwort formulieren\"]"
+        'Markdown-Codeblock. Beispiel: ["Kernfragen identifizieren", "Antwort formulieren"]'
     )
 
 

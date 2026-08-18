@@ -75,9 +75,7 @@ async def run_pipeline(email_text: str) -> AsyncIterator[PipelineEvent]:
         session_id: str | None = None
         try:
             chat_model = build_chat_model()
-            session_id = await rag_client.create_rag_session(
-                rag_http_client, email_text.strip()
-            )
+            session_id = await rag_client.create_rag_session(rag_http_client, email_text.strip())
             search_tool = build_search_tool(rag_http_client, session_id)
             step_agent = create_react_agent(chat_model, tools=[search_tool])
 

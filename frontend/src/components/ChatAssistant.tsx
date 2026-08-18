@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { KnownCalendarSchema, MeetingProposalSchema } from '../api/generated';
+import type {
+  KnownCalendarSchema,
+  MeetingProposalSchema,
+} from '../api/generated';
 import { useNotification } from '../context/NotificationContext';
 import {
   addKnownCalendar,

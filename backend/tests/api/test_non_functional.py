@@ -28,7 +28,7 @@ def test_input_validation_security(client):
         response = client.post("/email/suggestion", json={"email_content": large_input})
 
         # THEN
-        # System should handle it (either 200 or 413/422 depending on config, here 200 is expected if not limited)
+        # System should handle it (200 expected here; 413/422 also acceptable if limited)
         assert response.status_code in [status.HTTP_200_OK, status.HTTP_413_CONTENT_TOO_LARGE]
 
 

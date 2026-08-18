@@ -22,9 +22,7 @@ def _round_up_to_quarter_hour(dt: datetime) -> datetime:
     return rounded
 
 
-def _snap_into_daily_window(
-    dt: datetime, daily_window: tuple[int, int] | None
-) -> datetime:
+def _snap_into_daily_window(dt: datetime, daily_window: tuple[int, int] | None) -> datetime:
     """Move `dt` forward to the next instant within `daily_window` (local
 
     hour-of-day bounds, e.g. (8, 12) for "vormittags"), evaluated in

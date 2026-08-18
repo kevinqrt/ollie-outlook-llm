@@ -5,8 +5,9 @@ from app.api.schemas.calendar_schema import (
     MeetingTimeSuggestionSchema,
     TimeSlotSchema,
 )
+from app.services.availability import _compute_free_slots
 from app.services.graph_auth_service import GraphAuthService
-from app.services.graph_calendar_service import GraphCalendarService, _compute_free_slots
+from app.services.graph_calendar_service import GraphCalendarService
 
 # (offset from start of the requested window, duration, subject, organizer)
 _MOCK_EVENT_TEMPLATE: list[tuple[timedelta, timedelta, str, str]] = [

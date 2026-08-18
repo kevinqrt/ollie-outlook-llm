@@ -27,7 +27,9 @@ describe('OfficeService.openUrl', () => {
   it('uses openBrowserWindow when the host supports it (classic desktop Outlook)', () => {
     isSetSupportedSpy.mockReturnValue(true);
 
-    new OfficeService().openUrl('https://outlook.office.com/calendar/0/deeplink/compose');
+    new OfficeService().openUrl(
+      'https://outlook.office.com/calendar/0/deeplink/compose'
+    );
 
     expect(openBrowserWindowSpy).toHaveBeenCalledWith(
       'https://outlook.office.com/calendar/0/deeplink/compose'
@@ -38,7 +40,9 @@ describe('OfficeService.openUrl', () => {
   it('falls back to window.open when the host does not support it (OWA/new Outlook)', () => {
     isSetSupportedSpy.mockReturnValue(false);
 
-    new OfficeService().openUrl('https://outlook.office.com/calendar/0/deeplink/compose');
+    new OfficeService().openUrl(
+      'https://outlook.office.com/calendar/0/deeplink/compose'
+    );
 
     expect(openSpy).toHaveBeenCalledWith(
       'https://outlook.office.com/calendar/0/deeplink/compose',

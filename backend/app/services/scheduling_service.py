@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -114,9 +115,7 @@ def _resolve_listing_day(detection: dict[str, Any], now: datetime) -> datetime:
             ).astimezone(UTC)
 
     return (
-        now.astimezone(LOCAL_TZ)
-        .replace(hour=0, minute=0, second=0, microsecond=0)
-        .astimezone(UTC)
+        now.astimezone(LOCAL_TZ).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
     )
 
 
@@ -296,8 +295,7 @@ class SchedulingService:
             return AvailabilityAugmentation()
 
         range_label = (
-            f"{format_datetime_de(window_start)} Uhr und "
-            f"{format_datetime_de(window_end)} Uhr"
+            f"{format_datetime_de(window_start)} Uhr und {format_datetime_de(window_end)} Uhr"
         )
         if not events:
             return AvailabilityAugmentation(
@@ -330,10 +328,13 @@ class SchedulingService:
         """
         if not attendees:
             return []
-        checker = getattr(self._calendar_service, "unknown_attendees", None)
+        checker: Callable[[list[str]], list[str]] | None = getattr(
+            self._calendar_service, "unknown_attendees", None
+        )
         if checker is None:
             return []
-        return checker(attendees)
+        result: list[str] = checker(attendees)
+        return result
 
     async def _detect_meeting_request(self, text: str) -> dict[str, Any] | None:
         try:

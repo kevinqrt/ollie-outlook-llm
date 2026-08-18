@@ -564,9 +564,7 @@ async def test_augment_mentions_unknown_attendees_when_backend_reports_them(mock
         "Koennen wir uns treffen?", attendees=["alice@example.com", "bob@example.com"]
     )
 
-    ics_calendar.unknown_attendees.assert_called_once_with(
-        ["alice@example.com", "bob@example.com"]
-    )
+    ics_calendar.unknown_attendees.assert_called_once_with(["alice@example.com", "bob@example.com"])
     assert "bob@example.com" in result.context
     assert "Kalender-Link bekannt" in result.context
 
@@ -609,9 +607,7 @@ async def test_augment_lists_calendar_events_when_query_detected(
     mock_llm.chat = AsyncMock(return_value='{"is_calendar_query": true}')
     mock_calendar.list_events = AsyncMock(return_value=[EVENT_2, EVENT_1])
 
-    result = await scheduling_service.augment_with_availability(
-        "Was steht in meinem Kalender?"
-    )
+    result = await scheduling_service.augment_with_availability("Was steht in meinem Kalender?")
 
     assert result.proposal is None
     # Sorted chronologically even though the mock returned them out of order.

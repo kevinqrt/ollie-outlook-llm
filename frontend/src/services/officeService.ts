@@ -109,10 +109,11 @@ export class OfficeService {
    */
   public openUrl(url: string): void {
     try {
-      const supportsOpenBrowserWindow = Office.context.requirements.isSetSupported(
-        'OpenBrowserWindowApi',
-        '1.1'
-      );
+      const supportsOpenBrowserWindow =
+        Office.context.requirements.isSetSupported(
+          'OpenBrowserWindowApi',
+          '1.1'
+        );
       if (supportsOpenBrowserWindow) {
         Office.context.ui.openBrowserWindow(url);
       } else {

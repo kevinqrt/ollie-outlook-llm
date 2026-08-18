@@ -101,7 +101,9 @@ class TestIcsCalendarServiceFetching:
     @pytest.mark.anyio
     async def test_list_events_raises_when_no_self_url(self, service: IcsCalendarService):
         with pytest.raises(CalendarServiceError, match="Kein eigener Kalender-Link"):
-            await service.list_events(datetime(2026, 8, 1, tzinfo=UTC), datetime(2026, 9, 1, tzinfo=UTC))
+            await service.list_events(
+                datetime(2026, 8, 1, tzinfo=UTC), datetime(2026, 9, 1, tzinfo=UTC)
+            )
 
     @pytest.mark.anyio
     async def test_list_events_parses_simple_event(
@@ -176,9 +178,7 @@ class TestIcsCalendarServiceFetching:
             )
 
     @pytest.mark.anyio
-    async def test_validate_feed_passes_for_valid_url(
-        self, service: IcsCalendarService
-    ):
+    async def test_validate_feed_passes_for_valid_url(self, service: IcsCalendarService):
         service._client.get = AsyncMock(return_value=_mock_response(SIMPLE_ICS))
 
         await service.validate_feed("https://example.com/me.ics")  # no raise
@@ -260,9 +260,7 @@ END:VCALENDAR
         assert all(s.confidence == 100.0 for s in suggestions)
 
     @pytest.mark.anyio
-    async def test_find_meeting_times_raises_when_no_self_url(
-        self, service: IcsCalendarService
-    ):
+    async def test_find_meeting_times_raises_when_no_self_url(self, service: IcsCalendarService):
         with pytest.raises(CalendarServiceError, match="Kein eigener Kalender-Link"):
             await service.find_meeting_times(
                 ["alice@example.com"],

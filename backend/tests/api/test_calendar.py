@@ -171,9 +171,7 @@ def test_post_calendar_ics_self_success(client: TestClient) -> None:
     ) as mock_validate:
         mock_validate.return_value = None
 
-        response = client.post(
-            "/calendar/ics/self", json={"url": "https://example.com/me.ics"}
-        )
+        response = client.post("/calendar/ics/self", json={"url": "https://example.com/me.ics"})
 
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {"configured": True}
@@ -188,9 +186,7 @@ def test_post_calendar_ics_self_rejects_unreachable_url(client: TestClient) -> N
     ) as mock_validate:
         mock_validate.side_effect = CalendarServiceError("Kalender-Link nicht erreichbar.")
 
-        response = client.post(
-            "/calendar/ics/self", json={"url": "https://example.com/broken.ics"}
-        )
+        response = client.post("/calendar/ics/self", json={"url": "https://example.com/broken.ics"})
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
@@ -225,8 +221,6 @@ def test_calendar_ics_known_add_list_remove_roundtrip(client: TestClient) -> Non
 
 
 def test_calendar_ics_endpoints_503_when_graph_backend_active(graph_client: TestClient) -> None:
-    response = graph_client.post(
-        "/calendar/ics/self", json={"url": "https://example.com/me.ics"}
-    )
+    response = graph_client.post("/calendar/ics/self", json={"url": "https://example.com/me.ics"})
 
     assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE

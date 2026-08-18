@@ -101,7 +101,10 @@ describe('calendarWorkflow', () => {
       vi.mocked(getCalendarIcsKnown).mockResolvedValue({
         data: {
           calendars: [
-            { email: 'alice@example.com', url: 'https://example.com/alice.ics' },
+            {
+              email: 'alice@example.com',
+              url: 'https://example.com/alice.ics',
+            },
           ],
         },
         error: null,
@@ -119,7 +122,10 @@ describe('calendarWorkflow', () => {
       vi.mocked(postCalendarIcsKnown).mockResolvedValue({
         data: {
           calendars: [
-            { email: 'alice@example.com', url: 'https://example.com/alice.ics' },
+            {
+              email: 'alice@example.com',
+              url: 'https://example.com/alice.ics',
+            },
           ],
         },
         error: null,
@@ -131,7 +137,10 @@ describe('calendarWorkflow', () => {
       );
 
       expect(postCalendarIcsKnown).toHaveBeenCalledWith({
-        body: { email: 'alice@example.com', url: 'https://example.com/alice.ics' },
+        body: {
+          email: 'alice@example.com',
+          url: 'https://example.com/alice.ics',
+        },
       });
       expect(result).toEqual([
         { email: 'alice@example.com', url: 'https://example.com/alice.ics' },
@@ -184,9 +193,7 @@ describe('calendarWorkflow', () => {
       expect(parsed.searchParams.get('startdt')).toBe(
         '2026-08-06T16:30:00.000Z'
       );
-      expect(parsed.searchParams.get('enddt')).toBe(
-        '2026-08-06T17:00:00.000Z'
-      );
+      expect(parsed.searchParams.get('enddt')).toBe('2026-08-06T17:00:00.000Z');
       expect(parsed.searchParams.has('subject')).toBe(false);
       expect(parsed.searchParams.has('location')).toBe(false);
       expect(parsed.searchParams.has('body')).toBe(false);

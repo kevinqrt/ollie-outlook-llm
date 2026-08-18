@@ -51,7 +51,8 @@ class IcsCalendarStore:
 
     def _load(self) -> dict[str, Any]:
         if self._path.exists():
-            return json.loads(self._path.read_text(encoding="utf-8"))
+            data: dict[str, Any] = json.loads(self._path.read_text(encoding="utf-8"))
+            return data
         return {"self": None, "known": {}}
 
     def _save(self) -> None:
@@ -66,7 +67,8 @@ class IcsCalendarStore:
             self._save()
 
     def get_known_url(self, email: str) -> str | None:
-        return self._data.get("known", {}).get(email.lower())
+        known: dict[str, str] = self._data.get("known", {})
+        return known.get(email.lower())
 
     def set_known_url(self, email: str, url: str) -> None:
         with self._lock:

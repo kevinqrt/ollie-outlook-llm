@@ -139,6 +139,21 @@
           <bt:String id="AutoReplyDescription" DefaultValue="Generiert einen KI-Vorschlag und fügt ihn direkt in die Antwort ein."/>
         </bt:LongStrings>
       </Resources>
+
+      <!--
+        Aufgabenradar (Postfach-Scan): benötigt Nested App Authentication (SSO)
+        für den Microsoft-Graph-Zugriff (Mail.Read). Id/Resource müssen nach der
+        Azure-AD/Entra-ID-App-Registrierung ersetzt werden, siehe README-Abschnitt
+        "Graph-API-Setup". Bis dahin ist WebApplicationInfo nur ein Platzhalter,
+        der Postfach-Scan schlägt beim Login fehl (siehe VITE_AAD_CLIENT_ID).
+      -->
+      <WebApplicationInfo>
+        <Id>00000000-0000-0000-0000-000000000000</Id>
+        <Resource>api://localhost:3000/00000000-0000-0000-0000-000000000000</Resource>
+        <Scopes>
+          <Scope>Mail.Read</Scope>
+        </Scopes>
+      </WebApplicationInfo>
     </VersionOverrides>
   </VersionOverrides>
 </OfficeApp>

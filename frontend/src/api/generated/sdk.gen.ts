@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, GetEmailSuggestionData, GetEmailSuggestionErrors, GetEmailSuggestionResponses, GetHealthData, GetHealthResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostChatData, PostChatErrors, PostChatResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
+import type { DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, GetEmailActionSummaryData, GetEmailActionSummaryErrors, GetEmailActionSummaryResponses, GetEmailSuggestionData, GetEmailSuggestionErrors, GetEmailSuggestionResponses, GetHealthData, GetHealthResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostChatData, PostChatErrors, PostChatResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -46,6 +46,20 @@ export const postChat = <ThrowOnError extends boolean = false>(options: Options<
  */
 export const getEmailSuggestion = <ThrowOnError extends boolean = false>(options: Options<GetEmailSuggestionData, ThrowOnError>) => (options.client ?? client).post<GetEmailSuggestionResponses, GetEmailSuggestionErrors, ThrowOnError>({
     url: '/email/suggestion',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Classify an email and extract an actionable summary
+ *
+ * Classify an incoming email and extract a directly actionable summary.
+ */
+export const getEmailActionSummary = <ThrowOnError extends boolean = false>(options: Options<GetEmailActionSummaryData, ThrowOnError>) => (options.client ?? client).post<GetEmailActionSummaryResponses, GetEmailActionSummaryErrors, ThrowOnError>({
+    url: '/email/action-summary',
     ...options,
     headers: {
         'Content-Type': 'application/json',

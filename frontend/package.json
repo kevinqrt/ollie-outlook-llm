@@ -17,6 +17,7 @@
     "validate": "npm run check && npm run typecheck"
   },
   "dependencies": {
+    "@azure/msal-browser": "^4.5.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

@@ -3,8 +3,9 @@ import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.router import api_router
 from app.core.dependencies import container
@@ -48,6 +49,14 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
+        """Ensures every error reaches the frontend as JSON, never Starlette's
+        default plain-text 500 page, which the generated API client can't parse.
+        """
+        logger.exception("Unhandled exception while processing request: %s", exc)
+        return JSONResponse(status_code=500, content={"detail": "Internal server error."})
 
     # Include API routes
     app.include_router(api_router)

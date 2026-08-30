@@ -1,0 +1,124 @@
+.task-radar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.radar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radar-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 6px;
+}
+
+.radar-card.action {
+  border-left-color: #c25b16;
+}
+
+.radar-card.info,
+.radar-card.thanks,
+.radar-card.newsletter {
+  border-left-color: var(--text-muted);
+}
+
+.radar-card.done {
+  opacity: 0.6;
+}
+
+.radar-done {
+  padding-top: 2px;
+}
+
+.radar-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.radar-summary {
+  margin: 0 0 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.radar-card.done .radar-summary {
+  text-decoration: line-through;
+}
+
+.radar-meta {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.radar-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  flex: none;
+}
+
+.radar-action-btn {
+  display: inline-block;
+  padding: 6px 10px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.radar-action-btn:hover {
+  background: var(--primary-dark);
+}
+
+.radar-link-btn {
+  padding: 5px 10px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.radar-link-btn:hover {
+  background: #f3f2f1;
+}
+
+.radar-rest {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.radar-rest summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.radar-rest .radar-list {
+  margin-top: 8px;
+}

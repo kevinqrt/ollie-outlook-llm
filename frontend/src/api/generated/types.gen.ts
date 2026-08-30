@@ -5,6 +5,16 @@ export type ClientOptions = {
 };
 
 /**
+ * ActionCategory
+ */
+export type ActionCategory = 'action' | 'info' | 'thanks' | 'newsletter';
+
+/**
+ * ActionType
+ */
+export type ActionType = 'meeting' | 'confirm_link' | 'reply_needed' | 'document' | 'other';
+
+/**
  * Body_upload_pdf_knowledge_pdf_post
  */
 export type BodyUploadPdfKnowledgePdfPost = {
@@ -54,6 +64,66 @@ export type ChatResponseSchema = {
      * The AI-generated reply
      */
     reply: string;
+};
+
+/**
+ * EmailActionRequestSchema
+ */
+export type EmailActionRequestSchema = {
+    /**
+     * Emailcontent
+     *
+     * Plain text body of the email to classify.
+     */
+    emailContent: string;
+    /**
+     * Emaillinks
+     *
+     * Links found in the email body, in order of appearance. The model references these by index instead of generating URLs itself.
+     */
+    emailLinks?: Array<string>;
+    /**
+     * Sender
+     *
+     * Display name or address of the sender.
+     */
+    sender?: string | null;
+    /**
+     * Subject
+     *
+     * Subject line of the email.
+     */
+    subject?: string | null;
+};
+
+/**
+ * EmailActionResponseSchema
+ */
+export type EmailActionResponseSchema = {
+    /**
+     * Coarse triage bucket for the email.
+     */
+    category: ActionCategory;
+    /**
+     * Subtype of the required action, set only when category='action'.
+     */
+    actionType?: ActionType | null;
+    /**
+     * Actionsummary
+     *
+     * One concrete, ready-to-act-on sentence describing the required action.
+     */
+    actionSummary?: string | null;
+    /**
+     * Linkindex
+     *
+     * Index into the request's emailLinks pointing to the relevant link, set only when actionType='confirm_link'.
+     */
+    linkIndex?: number | null;
+    /**
+     * Structured meeting details, set only when actionType='meeting'.
+     */
+    meeting?: MeetingDetailsSchema | null;
 };
 
 /**
@@ -187,6 +257,30 @@ export type KnowledgeUploadResponseSchema = {
 };
 
 /**
+ * MeetingDetailsSchema
+ */
+export type MeetingDetailsSchema = {
+    /**
+     * Subject
+     *
+     * Proposed meeting subject.
+     */
+    subject?: string | null;
+    /**
+     * Proposedtime
+     *
+     * Proposed date/time as mentioned in the email.
+     */
+    proposedTime?: string | null;
+    /**
+     * Attendees
+     *
+     * Attendee names or emails mentioned in the email.
+     */
+    attendees?: Array<string>;
+};
+
+/**
  * ValidationError
  */
 export type ValidationError = {
@@ -283,6 +377,35 @@ export type GetEmailSuggestionResponses = {
 };
 
 export type GetEmailSuggestionResponse = GetEmailSuggestionResponses[keyof GetEmailSuggestionResponses];
+
+export type GetEmailActionSummaryData = {
+    body: EmailActionRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/email/action-summary';
+};
+
+export type GetEmailActionSummaryErrors = {
+    /**
+     * Validation Error (e.g. empty email content)
+     */
+    422: unknown;
+    /**
+     * RAG Service unavailable
+     */
+    503: ErrorResponseSchema;
+};
+
+export type GetEmailActionSummaryError = GetEmailActionSummaryErrors[keyof GetEmailActionSummaryErrors];
+
+export type GetEmailActionSummaryResponses = {
+    /**
+     * Category, action subtype and a directly executable action summary
+     */
+    200: EmailActionResponseSchema;
+};
+
+export type GetEmailActionSummaryResponse = GetEmailActionSummaryResponses[keyof GetEmailActionSummaryResponses];
 
 export type UploadPdfKnowledgePdfPostData = {
     body: BodyUploadPdfKnowledgePdfPost;

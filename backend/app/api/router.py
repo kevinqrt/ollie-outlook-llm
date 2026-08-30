@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
+from app.api.schemas.action_schema import EmailActionRequestSchema, EmailActionResponseSchema
 from app.api.schemas.chat_schema import ChatRequestSchema, ChatResponseSchema
 from app.api.schemas.email_schema import (
     EmailSuggestionRequestSchema,
@@ -74,6 +75,34 @@ async def get_email_suggestion(
     try:
         reply_text = await service.generate_suggestion(payload.email_content)
         return EmailSuggestionResponseSchema(suggested_reply=reply_text)
+    except LlmServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+
+@api_router.post(
+    "/email/action-summary",
+    response_model=EmailActionResponseSchema,
+    summary="Classify an email and extract an actionable summary",
+    response_description="Category, action subtype and a directly executable action summary",
+    responses={
+        503: {"model": ErrorResponseSchema, "description": "RAG Service unavailable"},
+        422: {"description": "Validation Error (e.g. empty email content)"},
+    },
+    tags=["email"],
+    operation_id="getEmailActionSummary",
+)
+async def get_email_action_summary(
+    payload: EmailActionRequestSchema,
+    service: LlmServiceDep,
+) -> EmailActionResponseSchema:
+    """Classify an incoming email and extract a directly actionable summary."""
+    try:
+        return await service.extract_action(
+            payload.email_content, payload.email_links, payload.sender, payload.subject
+        )
     except LlmServiceError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

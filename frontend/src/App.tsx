@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { ChatAssistant } from './components/ChatAssistant';
 import { KnowledgeBase } from './components/KnowledgeBase';
+import { TaskRadar } from './components/TaskRadar';
 import { useNotification } from './context/NotificationContext';
 import { officeService } from './services/officeService';
 import { runReplyWorkflow } from './services/replyWorkflow';
 import './App.css';
 
-type Tab = 'assistant' | 'chat' | 'knowledge';
+type Tab = 'assistant' | 'chat' | 'knowledge' | 'tasks';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('assistant');
@@ -103,6 +104,13 @@ function App() {
         >
           Wissensbasis
         </button>
+        <button
+          type="button"
+          className={`tab-button ${activeTab === 'tasks' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tasks')}
+        >
+          Aufgaben
+        </button>
       </nav>
 
       <section className="content-area">
@@ -134,6 +142,8 @@ function App() {
         {activeTab === 'chat' && <ChatAssistant />}
 
         {activeTab === 'knowledge' && <KnowledgeBase />}
+
+        {activeTab === 'tasks' && <TaskRadar />}
       </section>
     </main>
   );

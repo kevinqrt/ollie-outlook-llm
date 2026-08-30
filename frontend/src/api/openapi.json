@@ -115,6 +115,51 @@
         }
       }
     },
+    "/email/action-summary": {
+      "post": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Classify an email and extract an actionable summary",
+        "description": "Classify an incoming email and extract a directly actionable summary.",
+        "operationId": "getEmailActionSummary",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailActionRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Category, action subtype and a directly executable action summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailActionResponseSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error (e.g. empty email content)"
+          }
+        }
+      }
+    },
     "/knowledge/pdf": {
       "post": {
         "tags": [
@@ -268,6 +313,27 @@
   },
   "components": {
     "schemas": {
+      "ActionCategory": {
+        "type": "string",
+        "enum": [
+          "action",
+          "info",
+          "thanks",
+          "newsletter"
+        ],
+        "title": "ActionCategory"
+      },
+      "ActionType": {
+        "type": "string",
+        "enum": [
+          "meeting",
+          "confirm_link",
+          "reply_needed",
+          "document",
+          "other"
+        ],
+        "title": "ActionType"
+      },
       "Body_upload_pdf_knowledge_pdf_post": {
         "properties": {
           "file": {
@@ -332,6 +398,118 @@
           "reply"
         ],
         "title": "ChatResponseSchema"
+      },
+      "EmailActionRequestSchema": {
+        "properties": {
+          "emailContent": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Emailcontent",
+            "description": "Plain text body of the email to classify.",
+            "examples": [
+              "K\u00f6nnen wir uns Donnerstag um 14 Uhr treffen? Viele Gr\u00fc\u00dfe, Herr Schmidt"
+            ]
+          },
+          "emailLinks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Emaillinks",
+            "description": "Links found in the email body, in order of appearance. The model references these by index instead of generating URLs itself."
+          },
+          "sender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender",
+            "description": "Display name or address of the sender."
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject",
+            "description": "Subject line of the email."
+          }
+        },
+        "type": "object",
+        "required": [
+          "emailContent"
+        ],
+        "title": "EmailActionRequestSchema"
+      },
+      "EmailActionResponseSchema": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/ActionCategory",
+            "description": "Coarse triage bucket for the email."
+          },
+          "actionType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Subtype of the required action, set only when category='action'."
+          },
+          "actionSummary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actionsummary",
+            "description": "One concrete, ready-to-act-on sentence describing the required action.",
+            "examples": [
+              "Termin mit Herrn Schmidt vereinbaren: Vorschlag Do 14 Uhr"
+            ]
+          },
+          "linkIndex": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkindex",
+            "description": "Index into the request's emailLinks pointing to the relevant link, set only when actionType='confirm_link'."
+          },
+          "meeting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeetingDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Structured meeting details, set only when actionType='meeting'."
+          }
+        },
+        "type": "object",
+        "required": [
+          "category"
+        ],
+        "title": "EmailActionResponseSchema"
       },
       "EmailSuggestionRequestSchema": {
         "properties": {
@@ -502,6 +680,44 @@
           "filename"
         ],
         "title": "KnowledgeUploadResponseSchema"
+      },
+      "MeetingDetailsSchema": {
+        "properties": {
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject",
+            "description": "Proposed meeting subject."
+          },
+          "proposedTime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposedtime",
+            "description": "Proposed date/time as mentioned in the email."
+          },
+          "attendees": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Attendees",
+            "description": "Attendee names or emails mentioned in the email."
+          }
+        },
+        "type": "object",
+        "title": "MeetingDetailsSchema"
       },
       "ValidationError": {
         "properties": {

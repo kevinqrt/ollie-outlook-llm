@@ -8,7 +8,7 @@ An intelligent AI assistant for Outlook generating context-aware email replies u
 1. **Voraussetzung**
    - Sie müssen sich im Hochschulnetz befinden. (Vor Ort sein oder per VPN)
 
-2. **Programme per Konsole Starten** 
+2. **Programme per Konsole Starten**
    - per CD Befehl in den Projektordner wechseln
    - Das Backend starten mit: cd backend; uv run uvicorn app.app:app --reload
    - Das Frontend starten mit: cd frontend; npm run dev
@@ -47,4 +47,3 @@ Bei Backend-Änderungen: `just sync-openapi`
 ## 🧪 Testing
 
 *   **Outlook:** Manifest unter `manifest/manifest.xml` im Outlook Web-Client hochladen.
-

@@ -30,7 +30,8 @@ def build_chat_model() -> ChatOpenAI:
 
     return ChatOpenAI(
         base_url=settings.model_api_base_url,
-        api_key=SecretStr(settings.model_api_key or "not-needed"),
+        # Der DGX-Tunnel hinter MODEL_API_BASE_URL prüft keinen Key.
+        api_key=SecretStr("not-needed"),
         model=PIPELINE_MODEL,
         max_completion_tokens=settings.llm_max_tokens,
         timeout=120.0,

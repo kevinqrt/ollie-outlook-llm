@@ -5,12 +5,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from app.api.schemas.chat_schema import ChatRequestSchema, ChatResponseSchema
-from app.api.schemas.email_schema import (
-    EmailSuggestionRequestSchema,
-    EmailSuggestionResponseSchema,
-    ErrorResponseSchema,
-    HealthResponseSchema,
-)
+from app.api.schemas.email_schema import EmailSuggestionRequestSchema, HealthResponseSchema
 from app.api.schemas.knowledge_schema import (
     KnowledgeDocumentListSchema,
     KnowledgeSearchResponseSchema,
@@ -50,33 +45,6 @@ async def post_chat(
     try:
         reply = await service.chat(payload.messages)
         return ChatResponseSchema(reply=reply)
-    except LlmServiceError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
-
-
-@api_router.post(
-    "/email/suggestion",
-    response_model=EmailSuggestionResponseSchema,
-    summary="Generate AI email suggestion",
-    response_description="The successfully generated answer suggestion",
-    responses={
-        503: {"model": ErrorResponseSchema, "description": "RAG Service unavailable"},
-        422: {"description": "Validation Error (e.g. empty email content)"},
-    },
-    tags=["email"],
-    operation_id="getEmailSuggestion",
-)
-async def get_email_suggestion(
-    payload: EmailSuggestionRequestSchema,
-    service: LlmServiceDep,
-) -> EmailSuggestionResponseSchema:
-    """Generate a professional AI-driven reply suggestion for an incoming email."""
-    try:
-        reply_text = await service.generate_suggestion(payload.email_content)
-        return EmailSuggestionResponseSchema(suggested_reply=reply_text)
     except LlmServiceError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

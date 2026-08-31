@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, GetEmailSuggestionData, GetEmailSuggestionErrors, GetEmailSuggestionResponses, GetHealthData, GetHealthResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostChatData, PostChatErrors, PostChatResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
+import type { DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, GetHealthData, GetHealthResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostChatData, PostChatErrors, PostChatResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -32,20 +32,6 @@ export const getHealth = <ThrowOnError extends boolean = false>(options?: Option
  */
 export const postChat = <ThrowOnError extends boolean = false>(options: Options<PostChatData, ThrowOnError>) => (options.client ?? client).post<PostChatResponses, PostChatErrors, ThrowOnError>({
     url: '/chat',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Generate AI email suggestion
- *
- * Generate a professional AI-driven reply suggestion for an incoming email.
- */
-export const getEmailSuggestion = <ThrowOnError extends boolean = false>(options: Options<GetEmailSuggestionData, ThrowOnError>) => (options.client ?? client).post<GetEmailSuggestionResponses, GetEmailSuggestionErrors, ThrowOnError>({
-    url: '/email/suggestion',
     ...options,
     headers: {
         'Content-Type': 'application/json',

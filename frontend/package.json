@@ -23,7 +23,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
     "@hey-api/client-fetch": "^0.13.1",
-    "@hey-api/openapi-ts": "^0.96.1",
+    "@hey-api/openapi-ts": "^0.99.0",
     "@types/node": "^24.12.2",
     "@types/office-js": "^1.0.589",
     "@types/react": "^19.2.14",

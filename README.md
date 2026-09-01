@@ -3,6 +3,22 @@
 
 An intelligent AI assistant for Outlook generating context-aware email replies using RAG and LLMs.
 
+
+## 🛠 Setup (Für Nutzer)
+1. **Voraussetzung**
+   - Sie müssen sich im Hochschulnetz befinden. (Vor Ort sein oder per VPN)
+
+2. **Programme per Konsole Starten**
+   - per CD Befehl in den Projektordner wechseln
+   - Das Backend starten mit: cd backend; uv run uvicorn app.app:app --reload
+   - Das Frontend starten mit: cd frontend; npm run dev
+
+3. **Tunnel zur LLM Aufbauen**
+   - ssh -L 8001:localhost:8000 ollie@131.173.64.53
+   - Passwort eingeben
+
+4. **Outlook starten und nutzen**
+
 ## 🛠 Setup (Für Entwickler)
 
 1. **Tools installieren:**

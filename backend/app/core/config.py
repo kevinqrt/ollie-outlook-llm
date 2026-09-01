@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     chunk_size: int = 1000
     chunk_overlap: int = 100
 
+    model_api_base_url: str | None = None
+    llm_max_tokens: int = 1024
+
 
 @lru_cache
 def get_settings() -> Settings:

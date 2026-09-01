@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, GetEmailSuggestionData, GetEmailSuggestionErrors, GetEmailSuggestionResponses, GetHealthData, GetHealthResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostChatData, PostChatErrors, PostChatResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
+import type { DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, GetHealthData, GetHealthResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostChatData, PostChatErrors, PostChatResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -40,12 +40,12 @@ export const postChat = <ThrowOnError extends boolean = false>(options: Options<
 });
 
 /**
- * Generate AI email suggestion
+ * Generate AI email suggestion with live pipeline progress
  *
- * Generate a professional AI-driven reply suggestion for an incoming email.
+ * Generate a reply suggestion, streaming each pipeline step as it completes.
  */
-export const getEmailSuggestion = <ThrowOnError extends boolean = false>(options: Options<GetEmailSuggestionData, ThrowOnError>) => (options.client ?? client).post<GetEmailSuggestionResponses, GetEmailSuggestionErrors, ThrowOnError>({
-    url: '/email/suggestion',
+export const streamEmailSuggestion = <ThrowOnError extends boolean = false>(options: Options<StreamEmailSuggestionData, ThrowOnError, StreamEmailSuggestionResponse>) => (options.client ?? client).sse.post<StreamEmailSuggestionResponses, StreamEmailSuggestionErrors, ThrowOnError>({
+    url: '/email/suggestion/stream',
     ...options,
     headers: {
         'Content-Type': 'application/json',

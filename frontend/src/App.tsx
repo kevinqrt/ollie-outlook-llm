@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
+import type { PipelineEvent } from './api/pipelineEvents';
 import { ChatAssistant } from './components/ChatAssistant';
 import { KnowledgeBase } from './components/KnowledgeBase';
 import { useNotification } from './context/NotificationContext';
@@ -7,11 +8,26 @@ import { runReplyWorkflow } from './services/replyWorkflow';
 import './App.css';
 
 type Tab = 'assistant' | 'chat' | 'knowledge';
+type StepStatus = 'pending' | 'running' | 'done';
+
+type PipelineStep = {
+  index: number;
+  label: string;
+  status: StepStatus;
+};
+
+const STEP_ICON: Record<StepStatus, string> = {
+  pending: '○',
+  running: '◐',
+  done: '✓',
+};
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('assistant');
   const [isCompose, setIsCompose] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isPlanning, setIsPlanning] = useState(false);
+  const [steps, setSteps] = useState<PipelineStep[]>([]);
   const { notify, removeNotification } = useNotification();
   const loadingNotificationId = useRef<string | null>(null);
 
@@ -25,9 +41,42 @@ function App() {
     }
   }, []);
 
+  function handleProgress(event: PipelineEvent) {
+    switch (event.type) {
+      case 'plan_ready':
+        setIsPlanning(false);
+        setSteps(
+          event.steps.map((label, index) => ({
+            index,
+            label,
+            status: 'pending' as const,
+          }))
+        );
+        break;
+      case 'step_started':
+        setSteps((prev) =>
+          prev.map((step) =>
+            step.index === event.index ? { ...step, status: 'running' } : step
+          )
+        );
+        break;
+      case 'step_completed':
+        setSteps((prev) =>
+          prev.map((step) =>
+            step.index === event.index ? { ...step, status: 'done' } : step
+          )
+        );
+        break;
+      default:
+        break;
+    }
+  }
+
   function handleAction() {
+    setSteps([]);
+    setIsPlanning(true);
+
     startTransition(async () => {
-      // Clear any existing loading notification
       if (loadingNotificationId.current) {
         removeNotification(loadingNotificationId.current);
       }
@@ -39,7 +88,7 @@ function App() {
       );
 
       try {
-        await runReplyWorkflow();
+        await runReplyWorkflow(handleProgress);
         if (loadingNotificationId.current) {
           removeNotification(loadingNotificationId.current);
           loadingNotificationId.current = null;
@@ -63,6 +112,8 @@ function App() {
           }
         }
         notify(`Fehler: ${finalMessage}`, 'error');
+      } finally {
+        setIsPlanning(false);
       }
     });
   }
@@ -120,6 +171,27 @@ function App() {
               >
                 {isPending ? 'Generiere...' : 'Antwort einfügen'}
               </button>
+
+              {isPending && isPlanning && (
+                <p className="description">Plane Vorgehen...</p>
+              )}
+
+              {steps.length > 0 && (
+                <ul className="pipeline-steps">
+                  {steps.map((step) => (
+                    <li
+                      key={step.index}
+                      className="pipeline-step"
+                      data-status={step.status}
+                    >
+                      <span className="pipeline-step-icon">
+                        {STEP_ICON[step.status]}
+                      </span>
+                      <span>{step.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ) : (
             <div className="info-card">

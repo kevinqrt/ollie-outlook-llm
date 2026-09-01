@@ -1,20 +1,18 @@
+from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 
 from app.api.schemas.chat_schema import ChatRequestSchema, ChatResponseSchema
-from app.api.schemas.email_schema import (
-    EmailSuggestionRequestSchema,
-    EmailSuggestionResponseSchema,
-    ErrorResponseSchema,
-    HealthResponseSchema,
-)
+from app.api.schemas.email_schema import EmailSuggestionRequestSchema, HealthResponseSchema
 from app.api.schemas.knowledge_schema import (
     KnowledgeDocumentListSchema,
     KnowledgeSearchResponseSchema,
     KnowledgeUploadResponseSchema,
 )
 from app.core.dependencies import LlmServiceDep, VectorStoreServiceDep
+from app.pipeline import run_pipeline
 from app.services.llm_service import LlmServiceError
 
 api_router = APIRouter()
@@ -55,30 +53,24 @@ async def post_chat(
 
 
 @api_router.post(
-    "/email/suggestion",
-    response_model=EmailSuggestionResponseSchema,
-    summary="Generate AI email suggestion",
-    response_description="The successfully generated answer suggestion",
-    responses={
-        503: {"model": ErrorResponseSchema, "description": "RAG Service unavailable"},
-        422: {"description": "Validation Error (e.g. empty email content)"},
-    },
+    "/email/suggestion/stream",
+    response_class=StreamingResponse,
+    summary="Generate AI email suggestion with live pipeline progress",
+    response_description="SSE stream of pipeline steps, ending in a done or error event",
+    responses={200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}}},
     tags=["email"],
-    operation_id="getEmailSuggestion",
+    operation_id="streamEmailSuggestion",
 )
-async def get_email_suggestion(
+async def stream_email_suggestion(
     payload: EmailSuggestionRequestSchema,
-    service: LlmServiceDep,
-) -> EmailSuggestionResponseSchema:
-    """Generate a professional AI-driven reply suggestion for an incoming email."""
-    try:
-        reply_text = await service.generate_suggestion(payload.email_content)
-        return EmailSuggestionResponseSchema(suggested_reply=reply_text)
-    except LlmServiceError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
+) -> StreamingResponse:
+    """Generate a reply suggestion, streaming each pipeline step as it completes."""
+
+    async def event_stream() -> AsyncIterator[str]:
+        async for event in run_pipeline(payload.email_content):
+            yield f"data: {event.model_dump_json(by_alias=True)}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @api_router.post(

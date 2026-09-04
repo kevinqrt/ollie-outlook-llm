@@ -7,6 +7,8 @@
  * backend/app/api/schemas/pipeline_schema.py.
  */
 
+import type { MeetingProposalSchema } from './generated';
+
 export type PlanReadyEvent = {
   type: 'plan_ready';
   steps: string[];
@@ -28,6 +30,7 @@ export type StepCompletedEvent = {
 export type DoneEvent = {
   type: 'done';
   finalReply: string;
+  meetingProposal?: MeetingProposalSchema | null;
 };
 
 export type ErrorEvent = {

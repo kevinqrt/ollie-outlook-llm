@@ -55,7 +55,7 @@ async def _run_step(
     return await invoke_chat(chat_model, messages)
 
 
-async def run_pipeline(email_text: str) -> AsyncIterator[PipelineEvent]:
+async def run_pipeline(email_text: str, *, extra_context: str = "") -> AsyncIterator[PipelineEvent]:
     """Zerlegt die Antwort-Generierung in nachvollziehbare Teilschritte.
 
     Lässt das LLM die Aufgabe zunächst planen und arbeitet die geplanten
@@ -65,10 +65,16 @@ async def run_pipeline(email_text: str) -> AsyncIterator[PipelineEvent]:
     Konversationsverlauf (E-Mail, Plan, bisherige Zwischenergebnisse) wird als
     `messages`-Verlauf mitgeschickt, sodass jeder Teilschritt Zugriff auf den
     bisherigen Kontext hat.
+
+    `extra_context` (z.B. Kalenderverfügbarkeit) wird der E-Mail unverändert
+    angehängt, analog zu `LlmService.chat`.
     """
     messages: list[ChatMessage] = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"Eingegangene E-Mail:\n{email_text.strip()}"},
+        {
+            "role": "user",
+            "content": f"Eingegangene E-Mail:\n{email_text.strip()}{extra_context}",
+        },
     ]
 
     async with rag_client.build_client() as rag_http_client:

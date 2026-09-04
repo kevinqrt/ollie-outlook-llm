@@ -2,7 +2,8 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from app.api.schemas.email_schema import BaseSchema
+from app.api.schemas.base_schema import BaseSchema
+from app.api.schemas.calendar_schema import MeetingProposalSchema
 
 
 class PlanReadyEvent(BaseSchema):
@@ -26,6 +27,10 @@ class StepCompletedEvent(BaseSchema):
 class DoneEvent(BaseSchema):
     type: Literal["done"] = "done"
     final_reply: str = Field(description="Die finale, formatierte Antwort.")
+    meeting_proposal: MeetingProposalSchema | None = Field(
+        default=None,
+        description="Ein konkreter Terminvorschlag, falls die E-Mail eine Terminanfrage enthielt.",
+    )
 
 
 class ErrorEvent(BaseSchema):

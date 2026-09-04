@@ -23,6 +23,7 @@ export default defineConfig({
       input: {
         taskpane: resolve(__dirname, 'index.html'),
         commands: resolve(__dirname, 'commands.html'),
+        authCallback: resolve(__dirname, 'auth-callback.html'),
       },
     },
   },

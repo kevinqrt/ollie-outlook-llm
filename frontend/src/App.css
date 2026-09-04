@@ -131,6 +131,23 @@ h1 {
   cursor: wait;
 }
 
+.secondary-button {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 10px;
+  background: white;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.secondary-button:hover {
+  background: #f3f9ff;
+}
+
 .info-card {
   border-left: 4px solid var(--primary);
 }

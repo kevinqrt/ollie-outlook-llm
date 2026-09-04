@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import Field
 
-from app.api.schemas.email_schema import BaseSchema
+from app.api.schemas.base_schema import BaseSchema
 
 
 class KnowledgeSearchResultSchema(BaseSchema):

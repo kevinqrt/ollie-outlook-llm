@@ -5,6 +5,36 @@ export type ClientOptions = {
 };
 
 /**
+ * AuthCallbackRequestSchema
+ */
+export type AuthCallbackRequestSchema = {
+    /**
+     * Code
+     */
+    code: string;
+};
+
+/**
+ * AuthStatusSchema
+ */
+export type AuthStatusSchema = {
+    /**
+     * Authenticated
+     */
+    authenticated: boolean;
+};
+
+/**
+ * AuthUrlSchema
+ */
+export type AuthUrlSchema = {
+    /**
+     * Authurl
+     */
+    authUrl: string;
+};
+
+/**
  * Body_upload_pdf_knowledge_pdf_post
  */
 export type BodyUploadPdfKnowledgePdfPost = {
@@ -12,6 +42,46 @@ export type BodyUploadPdfKnowledgePdfPost = {
      * File
      */
     file: Blob | File;
+};
+
+/**
+ * CalendarEventListSchema
+ */
+export type CalendarEventListSchema = {
+    /**
+     * Events
+     */
+    events: Array<CalendarEventSchema>;
+};
+
+/**
+ * CalendarEventSchema
+ */
+export type CalendarEventSchema = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Subject
+     */
+    subject: string;
+    /**
+     * Start
+     */
+    start: string;
+    /**
+     * End
+     */
+    end: string;
+    /**
+     * Organizer
+     */
+    organizer?: string | null;
+    /**
+     * Isorganizer
+     */
+    isOrganizer?: boolean;
 };
 
 /**
@@ -54,6 +124,10 @@ export type ChatResponseSchema = {
      * The AI-generated reply
      */
     reply: string;
+    /**
+     * A concrete meeting suggestion, if the message contained a meeting request.
+     */
+    meetingProposal?: MeetingProposalSchema | null;
 };
 
 /**
@@ -66,6 +140,44 @@ export type EmailSuggestionRequestSchema = {
      * The full text of the email for which a suggestion should be generated.
      */
     emailContent: string;
+    /**
+     * Attendees
+     *
+     * Email addresses of the other recipients (To/Cc), used to check everyone's calendar availability for meeting-time suggestions.
+     */
+    attendees?: Array<string>;
+};
+
+/**
+ * ErrorResponseSchema
+ */
+export type ErrorResponseSchema = {
+    /**
+     * Detail
+     *
+     * A detailed error message explaining what went wrong.
+     */
+    detail: string;
+};
+
+/**
+ * FindMeetingTimesRequestSchema
+ */
+export type FindMeetingTimesRequestSchema = {
+    /**
+     * Attendees
+     *
+     * Email addresses of attendees whose calendars should be considered.
+     */
+    attendees: Array<string>;
+    /**
+     * Durationminutes
+     */
+    durationMinutes?: number;
+    /**
+     * Lookaheaddays
+     */
+    lookaheadDays?: number;
 };
 
 /**
@@ -88,6 +200,16 @@ export type HealthResponseSchema = {
      * Current status of the backend.
      */
     status: string;
+};
+
+/**
+ * IcsStatusSchema
+ */
+export type IcsStatusSchema = {
+    /**
+     * Configured
+     */
+    configured: boolean;
 };
 
 /**
@@ -163,6 +285,112 @@ export type KnowledgeUploadResponseSchema = {
 };
 
 /**
+ * KnownCalendarListSchema
+ */
+export type KnownCalendarListSchema = {
+    /**
+     * Calendars
+     */
+    calendars: Array<KnownCalendarSchema>;
+};
+
+/**
+ * KnownCalendarSchema
+ */
+export type KnownCalendarSchema = {
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
+ * MeetingProposalSchema
+ *
+ * A concrete, ready-to-create meeting suggestion for the Outlook compose form.
+ */
+export type MeetingProposalSchema = {
+    /**
+     * Subject
+     */
+    subject: string;
+    /**
+     * Body
+     */
+    body?: string;
+    /**
+     * Start
+     */
+    start: string;
+    /**
+     * End
+     */
+    end: string;
+    /**
+     * Attendees
+     */
+    attendees?: Array<string>;
+};
+
+/**
+ * MeetingTimeSuggestionListSchema
+ */
+export type MeetingTimeSuggestionListSchema = {
+    /**
+     * Suggestions
+     */
+    suggestions: Array<MeetingTimeSuggestionSchema>;
+};
+
+/**
+ * MeetingTimeSuggestionSchema
+ */
+export type MeetingTimeSuggestionSchema = {
+    /**
+     * Start
+     */
+    start: string;
+    /**
+     * End
+     */
+    end: string;
+    /**
+     * Confidence
+     */
+    confidence: number;
+};
+
+/**
+ * SetKnownIcsUrlRequestSchema
+ */
+export type SetKnownIcsUrlRequestSchema = {
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
+ * SetSelfIcsUrlRequestSchema
+ */
+export type SetSelfIcsUrlRequestSchema = {
+    /**
+     * Url
+     *
+     * Published Outlook calendar ICS feed URL (Outlook web -> Settings -> Calendar -> Shared calendars -> Publish a calendar).
+     */
+    url: string;
+};
+
+/**
  * ValidationError
  */
 export type ValidationError = {
@@ -218,6 +446,10 @@ export type PostChatErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * RAG Service unavailable
+     */
+    503: ErrorResponseSchema;
 };
 
 export type PostChatError = PostChatErrors[keyof PostChatErrors];
@@ -360,3 +592,282 @@ export type DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses = {
 };
 
 export type DeleteDocumentKnowledgeDocumentsFilenameDeleteResponse = DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses[keyof DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses];
+
+export type GetCalendarAuthLoginData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/calendar/auth/login';
+};
+
+export type GetCalendarAuthLoginErrors = {
+    /**
+     * Graph not configured
+     */
+    503: ErrorResponseSchema;
+};
+
+export type GetCalendarAuthLoginError = GetCalendarAuthLoginErrors[keyof GetCalendarAuthLoginErrors];
+
+export type GetCalendarAuthLoginResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuthUrlSchema;
+};
+
+export type GetCalendarAuthLoginResponse = GetCalendarAuthLoginResponses[keyof GetCalendarAuthLoginResponses];
+
+export type PostCalendarAuthCallbackData = {
+    body: AuthCallbackRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/calendar/auth/callback';
+};
+
+export type PostCalendarAuthCallbackErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Token exchange failed
+     */
+    503: ErrorResponseSchema;
+};
+
+export type PostCalendarAuthCallbackError = PostCalendarAuthCallbackErrors[keyof PostCalendarAuthCallbackErrors];
+
+export type PostCalendarAuthCallbackResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuthStatusSchema;
+};
+
+export type PostCalendarAuthCallbackResponse = PostCalendarAuthCallbackResponses[keyof PostCalendarAuthCallbackResponses];
+
+export type GetCalendarAuthStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/calendar/auth/status';
+};
+
+export type GetCalendarAuthStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuthStatusSchema;
+};
+
+export type GetCalendarAuthStatusResponse = GetCalendarAuthStatusResponses[keyof GetCalendarAuthStatusResponses];
+
+export type GetCalendarEventsData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Start
+         */
+        start: string;
+        /**
+         * End
+         */
+        end: string;
+    };
+    url: '/calendar/events';
+};
+
+export type GetCalendarEventsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Graph API unavailable
+     */
+    503: ErrorResponseSchema;
+};
+
+export type GetCalendarEventsError = GetCalendarEventsErrors[keyof GetCalendarEventsErrors];
+
+export type GetCalendarEventsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CalendarEventListSchema;
+};
+
+export type GetCalendarEventsResponse = GetCalendarEventsResponses[keyof GetCalendarEventsResponses];
+
+export type PostCalendarMeetingTimesData = {
+    body: FindMeetingTimesRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/calendar/meeting-times';
+};
+
+export type PostCalendarMeetingTimesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Graph API unavailable
+     */
+    503: ErrorResponseSchema;
+};
+
+export type PostCalendarMeetingTimesError = PostCalendarMeetingTimesErrors[keyof PostCalendarMeetingTimesErrors];
+
+export type PostCalendarMeetingTimesResponses = {
+    /**
+     * Successful Response
+     */
+    200: MeetingTimeSuggestionListSchema;
+};
+
+export type PostCalendarMeetingTimesResponse = PostCalendarMeetingTimesResponses[keyof PostCalendarMeetingTimesResponses];
+
+export type GetCalendarIcsStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/calendar/ics/status';
+};
+
+export type GetCalendarIcsStatusErrors = {
+    /**
+     * ICS backend not active
+     */
+    503: ErrorResponseSchema;
+};
+
+export type GetCalendarIcsStatusError = GetCalendarIcsStatusErrors[keyof GetCalendarIcsStatusErrors];
+
+export type GetCalendarIcsStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: IcsStatusSchema;
+};
+
+export type GetCalendarIcsStatusResponse = GetCalendarIcsStatusResponses[keyof GetCalendarIcsStatusResponses];
+
+export type PostCalendarIcsSelfData = {
+    body: SetSelfIcsUrlRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/calendar/ics/self';
+};
+
+export type PostCalendarIcsSelfErrors = {
+    /**
+     * URL not reachable/parseable
+     */
+    422: ErrorResponseSchema;
+    /**
+     * ICS backend not active
+     */
+    503: ErrorResponseSchema;
+};
+
+export type PostCalendarIcsSelfError = PostCalendarIcsSelfErrors[keyof PostCalendarIcsSelfErrors];
+
+export type PostCalendarIcsSelfResponses = {
+    /**
+     * Successful Response
+     */
+    200: IcsStatusSchema;
+};
+
+export type PostCalendarIcsSelfResponse = PostCalendarIcsSelfResponses[keyof PostCalendarIcsSelfResponses];
+
+export type GetCalendarIcsKnownData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/calendar/ics/known';
+};
+
+export type GetCalendarIcsKnownErrors = {
+    /**
+     * ICS backend not active
+     */
+    503: ErrorResponseSchema;
+};
+
+export type GetCalendarIcsKnownError = GetCalendarIcsKnownErrors[keyof GetCalendarIcsKnownErrors];
+
+export type GetCalendarIcsKnownResponses = {
+    /**
+     * Successful Response
+     */
+    200: KnownCalendarListSchema;
+};
+
+export type GetCalendarIcsKnownResponse = GetCalendarIcsKnownResponses[keyof GetCalendarIcsKnownResponses];
+
+export type PostCalendarIcsKnownData = {
+    body: SetKnownIcsUrlRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/calendar/ics/known';
+};
+
+export type PostCalendarIcsKnownErrors = {
+    /**
+     * URL not reachable/parseable
+     */
+    422: ErrorResponseSchema;
+    /**
+     * ICS backend not active
+     */
+    503: ErrorResponseSchema;
+};
+
+export type PostCalendarIcsKnownError = PostCalendarIcsKnownErrors[keyof PostCalendarIcsKnownErrors];
+
+export type PostCalendarIcsKnownResponses = {
+    /**
+     * Successful Response
+     */
+    200: KnownCalendarListSchema;
+};
+
+export type PostCalendarIcsKnownResponse = PostCalendarIcsKnownResponses[keyof PostCalendarIcsKnownResponses];
+
+export type DeleteCalendarIcsKnownData = {
+    body?: never;
+    path: {
+        /**
+         * Email
+         */
+        email: string;
+    };
+    query?: never;
+    url: '/calendar/ics/known/{email}';
+};
+
+export type DeleteCalendarIcsKnownErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * ICS backend not active
+     */
+    503: ErrorResponseSchema;
+};
+
+export type DeleteCalendarIcsKnownError = DeleteCalendarIcsKnownErrors[keyof DeleteCalendarIcsKnownErrors];
+
+export type DeleteCalendarIcsKnownResponses = {
+    /**
+     * Successful Response
+     */
+    200: KnownCalendarListSchema;
+};
+
+export type DeleteCalendarIcsKnownResponse = DeleteCalendarIcsKnownResponses[keyof DeleteCalendarIcsKnownResponses];

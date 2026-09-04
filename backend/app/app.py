@@ -18,7 +18,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     """Handles startup and shutdown events for the FastAPI application."""
     container.init_services()
     yield
-    container.close_services()
+    await container.close_services()
 
 
 def create_app() -> FastAPI:

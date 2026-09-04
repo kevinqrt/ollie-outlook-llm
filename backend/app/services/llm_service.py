@@ -1,10 +1,12 @@
 import logging
+from datetime import UTC, datetime
 
 import httpx
 from rag_service_api import Client, DirectQueryRequest, HTTPValidationError, direct_query
 
 from app.api.schemas.chat_schema import ChatMessageSchema
 from app.core.config import settings
+from app.core.datetime_utils import format_datetime_de
 from app.services.vector_store_service import VectorStoreService
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,17 @@ class LlmService:
             raise_on_unexpected_status=True,
         )
 
+    @staticmethod
+    def _today_line() -> str:
+        """A 'today is ...' anchor so the model can relate relative dates
+
+        (e.g. "morgen", "heute") in the user's message to concrete calendar
+        dates. Always included, regardless of whether calendar data is
+        available, since knowing the current date is baseline context for
+        any request - not just meeting-scheduling ones.
+        """
+        return f"Heute ist {format_datetime_de(datetime.now(UTC))} Uhr."
+
     async def _get_kb_context(
         self,
         query: str,
@@ -37,10 +50,11 @@ class LlmService:
             return ""
         return f"\n\n{header}\n" + "\n".join([r.content for r in results])
 
-    async def chat(self, messages: list[ChatMessageSchema]) -> str:
+    async def chat(self, messages: list[ChatMessageSchema], extra_context: str = "") -> str:
         """Process a conversation history and return an AI-generated reply.
 
         Integrates context from the knowledge base based on the latest user message.
+        `extra_context` (e.g. calendar availability) is appended verbatim.
         """
         if not messages:
             return "No messages provided."
@@ -63,7 +77,7 @@ class LlmService:
             conversation_history += f"{role_name}: {msg.content}\n"
 
         request_body = DirectQueryRequest(
-            documents_text=kb_context or "No additional context available.",
+            documents_text=f"{self._today_line()}{kb_context}{extra_context}",
             query=conversation_history + "\nAssistant:",
             llm_model=settings.llm_model,
         )

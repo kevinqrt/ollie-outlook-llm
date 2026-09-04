@@ -150,14 +150,6 @@ export class OfficeService {
       persistent: false,
     });
   }
-
-  public async hideNotification(): Promise<void> {
-    return new Promise((resolve) => {
-      const item = Office.context.mailbox.item;
-      if (!item) return resolve();
-      item.notificationMessages.removeAsync('inkai', () => resolve());
-    });
-  }
 }
 
 export const officeService = new OfficeService();

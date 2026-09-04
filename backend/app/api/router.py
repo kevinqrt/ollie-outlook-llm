@@ -1,8 +1,11 @@
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 
+from app.api.schemas.base_schema import ErrorResponseSchema
 from app.api.schemas.calendar_schema import (
     AuthCallbackRequestSchema,
     AuthStatusSchema,
@@ -17,17 +20,13 @@ from app.api.schemas.calendar_schema import (
     SetSelfIcsUrlRequestSchema,
 )
 from app.api.schemas.chat_schema import ChatRequestSchema, ChatResponseSchema
-from app.api.schemas.email_schema import (
-    EmailSuggestionRequestSchema,
-    EmailSuggestionResponseSchema,
-    ErrorResponseSchema,
-    HealthResponseSchema,
-)
+from app.api.schemas.email_schema import EmailSuggestionRequestSchema, HealthResponseSchema
 from app.api.schemas.knowledge_schema import (
     KnowledgeDocumentListSchema,
     KnowledgeSearchResponseSchema,
     KnowledgeUploadResponseSchema,
 )
+from app.api.schemas.pipeline_schema import DoneEvent
 from app.core.dependencies import (
     GraphAuthServiceDep,
     GraphCalendarServiceDep,
@@ -35,6 +34,7 @@ from app.core.dependencies import (
     SchedulingServiceDep,
     VectorStoreServiceDep,
 )
+from app.pipeline import run_pipeline
 from app.services.availability import CalendarServiceError
 from app.services.graph_auth_service import GraphAuthError
 from app.services.ics_calendar_service import IcsCalendarService
@@ -88,42 +88,37 @@ async def post_chat(
 
 
 @api_router.post(
-    "/email/suggestion",
-    response_model=EmailSuggestionResponseSchema,
-    summary="Generate AI email suggestion",
-    response_description="The successfully generated answer suggestion",
-    responses={
-        503: {"model": ErrorResponseSchema, "description": "RAG Service unavailable"},
-        422: {"description": "Validation Error (e.g. empty email content)"},
-    },
+    "/email/suggestion/stream",
+    response_class=StreamingResponse,
+    summary="Generate AI email suggestion with live pipeline progress",
+    response_description="SSE stream of pipeline steps, ending in a done or error event",
+    responses={200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}}},
     tags=["email"],
-    operation_id="getEmailSuggestion",
+    operation_id="streamEmailSuggestion",
 )
-async def get_email_suggestion(
+async def stream_email_suggestion(
     payload: EmailSuggestionRequestSchema,
-    service: LlmServiceDep,
     scheduling_service: SchedulingServiceDep,
-) -> EmailSuggestionResponseSchema:
-    """Generate a professional AI-driven reply suggestion for an incoming email.
+) -> StreamingResponse:
+    """Generate a reply suggestion, streaming each pipeline step as it completes.
 
     If the email contains a meeting request and the calendar is connected, the
-    suggestion is augmented with real availability so it can propose concrete times.
+    pipeline is augmented with real availability, and the final `done` event
+    carries a concrete meeting proposal.
     """
-    try:
-        augmentation = await scheduling_service.augment_with_availability(
-            payload.email_content, payload.attendees
-        )
-        reply_text = await service.generate_suggestion(
-            payload.email_content, extra_context=augmentation.context
-        )
-        return EmailSuggestionResponseSchema(
-            suggested_reply=reply_text, meeting_proposal=augmentation.proposal
-        )
-    except LlmServiceError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
+    augmentation = await scheduling_service.augment_with_availability(
+        payload.email_content, payload.attendees
+    )
+
+    async def event_stream() -> AsyncIterator[str]:
+        async for event in run_pipeline(payload.email_content, extra_context=augmentation.context):
+            if isinstance(event, DoneEvent):
+                event = DoneEvent(
+                    final_reply=event.final_reply, meeting_proposal=augmentation.proposal
+                )
+            yield f"data: {event.model_dump_json(by_alias=True)}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @api_router.post(

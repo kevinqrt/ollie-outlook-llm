@@ -9,7 +9,6 @@ from app.services.graph_auth_service import GraphAuthService
 from app.services.graph_calendar_service import GraphCalendarService
 from app.services.ics_calendar_service import IcsCalendarService, IcsCalendarStore
 from app.services.llm_service import LlmService
-from app.services.prompt_service import PromptService
 from app.services.scheduling_service import SchedulingService
 from app.services.vector_store_service import VectorStoreService
 
@@ -23,7 +22,6 @@ class ServiceContainer:
 
     def __init__(self) -> None:
         self.vector_store: VectorStoreService | None = None
-        self.prompt_service: PromptService | None = None
         self.llm_service: LlmService | None = None
         self.graph_auth_service: GraphAuthService | None = None
         self.graph_calendar_service: CalendarService | None = None
@@ -33,10 +31,7 @@ class ServiceContainer:
         """Initialize all global services."""
         logger.info("Initializing application services in container...")
         self.vector_store = VectorStoreService()
-        self.prompt_service = PromptService()
-        self.llm_service = LlmService(
-            vector_store=self.vector_store, prompt_service=self.prompt_service
-        )
+        self.llm_service = LlmService(vector_store=self.vector_store)
         if settings.calendar_mock_mode:
             logger.warning(
                 "CALENDAR_MOCK_MODE is active - calendar endpoints/MCP tools return fake data."
@@ -61,7 +56,6 @@ class ServiceContainer:
         if self.graph_calendar_service is not None:
             await self.graph_calendar_service.aclose()
         self.vector_store = None
-        self.prompt_service = None
         self.llm_service = None
         self.graph_auth_service = None
         self.graph_calendar_service = None

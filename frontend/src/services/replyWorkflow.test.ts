@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getEmailSuggestion } from '../api';
+import { streamEmailSuggestion } from '../api';
 import { officeService } from './officeService';
 import { runReplyWorkflow } from './replyWorkflow';
 
@@ -16,8 +16,14 @@ vi.mock('./officeService', () => ({
 }));
 
 vi.mock('../api', () => ({
-  getEmailSuggestion: vi.fn(),
+  streamEmailSuggestion: vi.fn(),
 }));
+
+async function* asyncStream<T>(events: T[]): AsyncGenerator<T> {
+  for (const event of events) {
+    yield event;
+  }
+}
 
 describe('replyWorkflow', () => {
   beforeEach(() => {
@@ -28,11 +34,9 @@ describe('replyWorkflow', () => {
     // GIVEN
     vi.mocked(officeService.getBodyText).mockResolvedValue('Email content');
     vi.mocked(officeService.isComposeMode).mockReturnValue(true);
-    // @ts-expect-error - mocked response omits the SDK's request/response metadata
-    vi.mocked(getEmailSuggestion).mockResolvedValue({
-      data: { suggestedReply: 'Suggested reply' },
-      error: null,
-    });
+    vi.mocked(streamEmailSuggestion).mockResolvedValue({
+      stream: asyncStream([{ type: 'done', finalReply: 'Suggested reply' }]),
+    } as never);
 
     // WHEN
     await runReplyWorkflow();
@@ -58,11 +62,11 @@ describe('replyWorkflow', () => {
     };
     vi.mocked(officeService.getBodyText).mockResolvedValue('Email content');
     vi.mocked(officeService.isComposeMode).mockReturnValue(true);
-    // @ts-expect-error - mocked response omits the SDK's request/response metadata
-    vi.mocked(getEmailSuggestion).mockResolvedValue({
-      data: { suggestedReply: 'Suggested reply', meetingProposal },
-      error: null,
-    });
+    vi.mocked(streamEmailSuggestion).mockResolvedValue({
+      stream: asyncStream([
+        { type: 'done', finalReply: 'Suggested reply', meetingProposal },
+      ]),
+    } as never);
 
     // WHEN
     const result = await runReplyWorkflow();
@@ -75,11 +79,9 @@ describe('replyWorkflow', () => {
     // GIVEN
     vi.mocked(officeService.getBodyText).mockResolvedValue('Email content');
     vi.mocked(officeService.isComposeMode).mockReturnValue(false);
-    // @ts-expect-error - mocked response omits the SDK's request/response metadata
-    vi.mocked(getEmailSuggestion).mockResolvedValue({
-      data: { suggestedReply: 'Suggested reply' },
-      error: null,
-    });
+    vi.mocked(streamEmailSuggestion).mockResolvedValue({
+      stream: asyncStream([{ type: 'done', finalReply: 'Suggested reply' }]),
+    } as never);
 
     // WHEN
     await runReplyWorkflow();
@@ -91,17 +93,36 @@ describe('replyWorkflow', () => {
     );
   });
 
-  it('should handle API errors correctly', async () => {
+  it('reports progress events to the onProgress callback', async () => {
     // GIVEN
     vi.mocked(officeService.getBodyText).mockResolvedValue('Email content');
-    // @ts-expect-error - mocked response omits the SDK's request/response metadata
-    vi.mocked(getEmailSuggestion).mockResolvedValue({
-      data: undefined,
-      error: { detail: 'Service Unavailable' },
-    });
+    vi.mocked(officeService.isComposeMode).mockReturnValue(true);
+    vi.mocked(streamEmailSuggestion).mockResolvedValue({
+      stream: asyncStream([
+        { type: 'plan_ready', steps: ['Schritt 1'] },
+        { type: 'step_started', index: 0, label: 'Schritt 1' },
+        { type: 'step_completed', index: 0, label: 'Schritt 1', result: 'ok' },
+        { type: 'done', finalReply: 'Suggested reply' },
+      ]),
+    } as never);
+    const onProgress = vi.fn();
+
+    // WHEN
+    await runReplyWorkflow(onProgress);
+
+    // THEN
+    expect(onProgress).toHaveBeenCalledTimes(4);
+  });
+
+  it('should handle a pipeline error event correctly', async () => {
+    // GIVEN
+    vi.mocked(officeService.getBodyText).mockResolvedValue('Email content');
+    vi.mocked(streamEmailSuggestion).mockResolvedValue({
+      stream: asyncStream([{ type: 'error', detail: 'Service Unavailable' }]),
+    } as never);
 
     // WHEN / THEN
-    await expect(runReplyWorkflow()).rejects.toThrow();
+    await expect(runReplyWorkflow()).rejects.toThrow('Service Unavailable');
     expect(officeService.showNotification).toHaveBeenCalledWith(
       'Fehler aufgetreten'
     );
@@ -110,11 +131,9 @@ describe('replyWorkflow', () => {
   it('should handle missing suggestion correctly', async () => {
     // GIVEN
     vi.mocked(officeService.getBodyText).mockResolvedValue('Email content');
-    // @ts-expect-error - mocked response omits the SDK's request/response metadata
-    vi.mocked(getEmailSuggestion).mockResolvedValue({
-      data: { suggestedReply: '' },
-      error: null,
-    });
+    vi.mocked(streamEmailSuggestion).mockResolvedValue({
+      stream: asyncStream([]),
+    } as never);
 
     // WHEN / THEN
     await expect(runReplyWorkflow()).rejects.toThrow(

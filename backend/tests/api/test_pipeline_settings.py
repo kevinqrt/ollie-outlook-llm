@@ -89,9 +89,7 @@ def test_update_default_prompt_is_rejected(client: TestClient) -> None:
 
 
 def test_update_unknown_saved_prompt_returns_404(client: TestClient) -> None:
-    response = client.put(
-        "/pipeline/settings/prompts/does-not-exist", json={"text": "Text"}
-    )
+    response = client.put("/pipeline/settings/prompts/does-not-exist", json={"text": "Text"})
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
 

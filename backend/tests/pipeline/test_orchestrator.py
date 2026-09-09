@@ -231,9 +231,7 @@ def test_clarification_needed_stops_pipeline_before_planning():
     )
 
     with patched_pipeline(fake_model) as mocks:
-        events = _run(
-            "Wann passt es dir diese Woche?", allow_clarifying_questions=True
-        )
+        events = _run("Wann passt es dir diese Woche?", allow_clarifying_questions=True)
 
     assert [e.type for e in events] == ["clarification_needed"]
     assert events[0].question == "Sollen wir den Termin auf 14 Uhr oder 15 Uhr legen?"

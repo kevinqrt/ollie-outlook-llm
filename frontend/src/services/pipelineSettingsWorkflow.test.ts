@@ -78,11 +78,11 @@ describe('pipelineSettingsWorkflow', () => {
       // object (e.g. the dev proxy answering with an empty 502 for an
       // unreachable backend) - regression test for the case where this used
       // to throw a useless "{}" instead of anything actionable.
-      // @ts-expect-error - mocked response omits the SDK's request/response metadata
+      // @ts-expect-error - mocked response omits the SDK's request metadata
       vi.mocked(getSavedPrompts).mockResolvedValue({
         data: undefined,
         error: {},
-        response: { status: 502 },
+        response: { status: 502 } as Response,
       });
 
       await expect(listSavedPrompts()).rejects.toThrow('HTTP 502');

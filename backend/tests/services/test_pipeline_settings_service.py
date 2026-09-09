@@ -117,9 +117,7 @@ def test_missing_settings_file_starts_with_default_prompt(tmp_path):
     assert store.get_prompt() == "DEFAULT PROMPT"
 
 
-def test_corrupted_settings_file_falls_back_to_default_instead_of_crashing(
-    tmp_path, caplog
-):
+def test_corrupted_settings_file_falls_back_to_default_instead_of_crashing(tmp_path, caplog):
     # A settings file can end up truncated/corrupted (e.g. a crash mid-write).
     # Startup must recover with the default prompt instead of taking the
     # whole backend down with an unhandled JSONDecodeError.

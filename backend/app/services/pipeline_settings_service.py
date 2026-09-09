@@ -55,9 +55,7 @@ class PipelineSettingsStore:
 
     def _log_active_prompt(self) -> None:
         if self._data.get("prompt"):
-            logger.info(
-                "Pipeline-Prompt: zuletzt gespeicherter, benutzerdefinierter Prompt aktiv."
-            )
+            logger.info("Pipeline-Prompt: zuletzt gespeicherter, benutzerdefinierter Prompt aktiv.")
         else:
             logger.info("Pipeline-Prompt: kein eigener gespeichert, nutze den Standard-Prompt.")
 

@@ -34,9 +34,11 @@ def parse_clarification_check(raw_answer: str) -> ClarificationCheckResult | Non
     needs_clarification = bool(parsed.get("needs_clarification"))
     question = str(parsed.get("question") or "").strip()
     raw_options = parsed.get("options")
-    options = [str(o).strip() for o in raw_options if str(o).strip()] if isinstance(
-        raw_options, list
-    ) else []
+    options = (
+        [str(o).strip() for o in raw_options if str(o).strip()]
+        if isinstance(raw_options, list)
+        else []
+    )
 
     if not needs_clarification or not question:
         return ClarificationCheckResult(needs_clarification=False, question="", options=[])

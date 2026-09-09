@@ -9,6 +9,12 @@
 
 import type { MeetingProposalSchema } from './generated';
 
+export type ClarificationNeededEvent = {
+  type: 'clarification_needed';
+  question: string;
+  options: string[];
+};
+
 export type PlanReadyEvent = {
   type: 'plan_ready';
   steps: string[];
@@ -39,6 +45,7 @@ export type ErrorEvent = {
 };
 
 export type PipelineEvent =
+  | ClarificationNeededEvent
   | PlanReadyEvent
   | StepStartedEvent
   | StepCompletedEvent

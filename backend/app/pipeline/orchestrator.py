@@ -7,6 +7,7 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 
 from app.api.schemas.pipeline_schema import (
+    ClarificationNeededEvent,
     DoneEvent,
     ErrorEvent,
     PipelineEvent,
@@ -15,14 +16,18 @@ from app.api.schemas.pipeline_schema import (
     StepStartedEvent,
 )
 from app.pipeline import rag_client
+from app.pipeline.clarification_parser import parse_clarification_check
 from app.pipeline.llm_client import ChatMessage, build_chat_model, invoke_chat
 from app.pipeline.plan_parser import parse_plan
-from app.pipeline.prompt_builder import build_planning_prompt, build_step_prompt
+from app.pipeline.prompt_builder import (
+    DEFAULT_SYSTEM_PROMPT,
+    build_clarification_check_prompt,
+    build_planning_prompt,
+    build_step_prompt,
+)
 from app.pipeline.tools import build_search_tool
 
 logger = logging.getLogger(__name__)
-
-SYSTEM_PROMPT = "Du bist ein professioneller E-Mail-Assistent."
 
 MAX_STEP_ATTEMPTS = 2
 
@@ -55,7 +60,14 @@ async def _run_step(
     return await invoke_chat(chat_model, messages)
 
 
-async def run_pipeline(email_text: str, *, extra_context: str = "") -> AsyncIterator[PipelineEvent]:
+async def run_pipeline(
+    email_text: str,
+    *,
+    extra_context: str = "",
+    system_prompt: str | None = None,
+    allow_clarifying_questions: bool = False,
+    clarification_answer: str | None = None,
+) -> AsyncIterator[PipelineEvent]:
     """Zerlegt die Antwort-Generierung in nachvollziehbare Teilschritte.
 
     Lässt das LLM die Aufgabe zunächst planen und arbeitet die geplanten
@@ -68,19 +80,51 @@ async def run_pipeline(email_text: str, *, extra_context: str = "") -> AsyncIter
 
     `extra_context` (z.B. Kalenderverfügbarkeit) wird der E-Mail unverändert
     angehängt, analog zu `LlmService.chat`.
+
+    Ist `allow_clarifying_questions` gesetzt und liegt noch keine
+    `clarification_answer` vor, wird vor der eigentlichen Pipeline geprüft, ob
+    dem Modell eine für die Antwort zwingend nötige Information fehlt. Falls ja,
+    wird nur ein `ClarificationNeededEvent` ausgegeben und die Pipeline endet
+    hier - der Aufrufer ruft sie mit der Nutzerantwort in `clarification_answer`
+    erneut auf, um die eigentliche Antwort zu generieren.
     """
     messages: list[ChatMessage] = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt or DEFAULT_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": f"Eingegangene E-Mail:\n{email_text.strip()}{extra_context}",
         },
     ]
 
+    has_answer = bool(clarification_answer and clarification_answer.strip())
+    if has_answer:
+        messages.append(
+            {
+                "role": "user",
+                "content": (
+                    "Zusätzliche Information vom Nutzer (Antwort auf Rückfrage): "
+                    f"{clarification_answer.strip() if clarification_answer else ''}"
+                ),
+            }
+        )
+
     async with rag_client.build_client() as rag_http_client:
         session_id: str | None = None
         try:
             chat_model = build_chat_model()
+
+            if allow_clarifying_questions and not has_answer:
+                check_answer = await invoke_chat(
+                    chat_model,
+                    [*messages, {"role": "user", "content": build_clarification_check_prompt()}],
+                )
+                clarification = parse_clarification_check(check_answer)
+                if clarification is not None and clarification.needs_clarification:
+                    yield ClarificationNeededEvent(
+                        question=clarification.question, options=clarification.options
+                    )
+                    return
+
             session_id = await rag_client.create_rag_session(rag_http_client, email_text.strip())
             search_tool = build_search_tool(rag_http_client, session_id)
             step_agent = create_react_agent(chat_model, tools=[search_tool])

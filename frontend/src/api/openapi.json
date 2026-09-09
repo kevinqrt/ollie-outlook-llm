@@ -86,7 +86,7 @@
           "email"
         ],
         "summary": "Generate AI email suggestion with live pipeline progress",
-        "description": "Generate a reply suggestion, streaming each pipeline step as it completes.\n\nIf the email contains a meeting request and the calendar is connected, the\npipeline is augmented with real availability, and the final `done` event\ncarries a concrete meeting proposal.",
+        "description": "Generate a reply suggestion, streaming each pipeline step as it completes.\n\nIf the email contains a meeting request and the calendar is connected, the\npipeline is augmented with real availability, and the final `done` event\ncarries a concrete meeting proposal.\n\nThe system prompt and whether the pipeline may ask a clarifying question\nbefore answering come from the user-configurable pipeline settings.",
         "operationId": "streamEmailSuggestion",
         "requestBody": {
           "content": {
@@ -105,6 +105,232 @@
               "text/event-stream": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pipeline/settings": {
+      "get": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "Get the current auto-reply pipeline settings",
+        "operationId": "getPipelineSettings",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineSettingsSchema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "Update the auto-reply pipeline settings (system prompt, clarifying questions)",
+        "operationId": "putPipelineSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePipelineSettingsRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineSettingsSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pipeline/settings/prompts": {
+      "get": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "List saved prompt templates",
+        "description": "List saved prompt templates, with the built-in default prompt always first.\n\nThe default entry is synthesized here (not stored in \"saved_prompts\") so it can\nnever be deleted or overwritten, but is always available to re-select - fixing\nthe case where a user edits the prompt field and saves over the original default.",
+        "operationId": "getSavedPrompts",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPromptListSchema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "Save a new prompt template",
+        "operationId": "postSavedPrompt",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSavedPromptRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPromptSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pipeline/settings/prompts/{prompt_id}": {
+      "put": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "Update a saved prompt template",
+        "operationId": "putSavedPrompt",
+        "parameters": [
+          {
+            "name": "prompt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Prompt Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSavedPromptRequestSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPromptSchema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Prompt not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "Delete a saved prompt template",
+        "operationId": "deleteSavedPrompt",
+        "parameters": [
+          {
+            "name": "prompt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Prompt Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Prompt not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
                 }
               }
             }
@@ -885,6 +1111,20 @@
         ],
         "title": "ChatResponseSchema"
       },
+      "CreateSavedPromptRequestSchema": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "CreateSavedPromptRequestSchema"
+      },
       "EmailSuggestionRequestSchema": {
         "properties": {
           "emailContent": {
@@ -908,6 +1148,18 @@
                 "alice@contoso.com"
               ]
             ]
+          },
+          "clarificationAnswer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clarificationanswer",
+            "description": "The user's answer to a previous 'clarification_needed' pipeline event, if any. Re-running with this set skips the clarification check and generates the reply directly, using the answer as extra context."
           }
         },
         "type": "object",
@@ -1213,6 +1465,66 @@
         ],
         "title": "MeetingTimeSuggestionSchema"
       },
+      "PipelineSettingsSchema": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "description": "System-Prompt, der die Antwort-Pipeline steuert."
+          },
+          "allowClarifyingQuestions": {
+            "type": "boolean",
+            "title": "Allowclarifyingquestions",
+            "description": "Ob die Pipeline vor der Antwort-Generierung R\u00fcckfragen an den Nutzer stellen darf, statt Fehlendes zu erfinden oder zu \u00fcbergehen.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "title": "PipelineSettingsSchema"
+      },
+      "SavedPromptListSchema": {
+        "properties": {
+          "prompts": {
+            "items": {
+              "$ref": "#/components/schemas/SavedPromptSchema"
+            },
+            "type": "array",
+            "title": "Prompts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompts"
+        ],
+        "title": "SavedPromptListSchema"
+      },
+      "SavedPromptSchema": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "title": "Isdefault",
+            "description": "Ob dies der eingebaute Standard-Prompt ist - immer vorhanden, nicht bearbeitbar oder l\u00f6schbar, aber jederzeit erneut ausw\u00e4hlbar.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "SavedPromptSchema"
+      },
       "SetKnownIcsUrlRequestSchema": {
         "properties": {
           "email": {
@@ -1250,6 +1562,39 @@
           "url"
         ],
         "title": "SetSelfIcsUrlRequestSchema"
+      },
+      "UpdatePipelineSettingsRequestSchema": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Prompt"
+          },
+          "allowClarifyingQuestions": {
+            "type": "boolean",
+            "title": "Allowclarifyingquestions",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "title": "UpdatePipelineSettingsRequestSchema"
+      },
+      "UpdateSavedPromptRequestSchema": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "UpdateSavedPromptRequestSchema"
       },
       "ValidationError": {
         "properties": {

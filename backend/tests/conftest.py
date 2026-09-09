@@ -13,19 +13,22 @@ def client(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Generator[TestClient]:
 
     Forces calendar_mock_mode off and calendar_backend to "ics" (today's
     default) regardless of the developer's local .env, so tests deterministically
-    exercise the same backend independent of local machine state. The ICS
-    store is redirected to a tmp file so tests never touch the real
-    `ics_calendars.json` in the repo.
+    exercise the same backend independent of local machine state. The ICS and
+    pipeline-settings stores are redirected to tmp files so tests never touch
+    the real `ics_calendars.json` / `pipeline_settings.json` in the repo.
     """
     monkeypatch.setattr(settings, "calendar_mock_mode", False)
     monkeypatch.setattr(settings, "calendar_backend", "ics")
     monkeypatch.setattr(settings, "ics_store_path", str(tmp_path / "ics_calendars.json"))
+    monkeypatch.setattr(
+        settings, "pipeline_settings_path", str(tmp_path / "pipeline_settings.json")
+    )
     with TestClient(app) as c:
         yield c
 
 
 @pytest.fixture
-def graph_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient]:
+def graph_client(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Generator[TestClient]:
     """Provides a TestClient forced onto the Microsoft Graph calendar backend.
 
     For tests that specifically exercise Graph/Azure AD OAuth behavior (they
@@ -34,5 +37,8 @@ def graph_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient]:
     """
     monkeypatch.setattr(settings, "calendar_mock_mode", False)
     monkeypatch.setattr(settings, "calendar_backend", "graph")
+    monkeypatch.setattr(
+        settings, "pipeline_settings_path", str(tmp_path / "pipeline_settings.json")
+    )
     with TestClient(app) as c:
         yield c

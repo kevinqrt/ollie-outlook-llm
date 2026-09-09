@@ -1,10 +1,21 @@
 import { streamEmailSuggestion } from '../api';
 import type { MeetingProposalSchema } from '../api/generated';
-import { isPipelineEvent, type PipelineEvent } from '../api/pipelineEvents';
+import {
+  type ClarificationNeededEvent,
+  isPipelineEvent,
+  type PipelineEvent,
+} from '../api/pipelineEvents';
 import { officeService } from './officeService';
 
 export interface ReplyWorkflowResult {
   meetingProposal?: MeetingProposalSchema | null;
+  /**
+   * Gesetzt, wenn die Pipeline vor der eigentlichen Antwort eine Rückfrage an
+   * den Nutzer stellt (nur wenn die Einstellung dafür aktiviert ist). Der
+   * Aufrufer zeigt die Frage/Optionen an und ruft den Workflow danach mit der
+   * Antwort in `clarificationAnswer` erneut auf.
+   */
+  clarification?: ClarificationNeededEvent | null;
 }
 
 export type PipelineProgressHandler = (event: PipelineEvent) => void;
@@ -17,7 +28,8 @@ export type PipelineProgressHandler = (event: PipelineEvent) => void;
  * kann, statt nur auf das Endergebnis zu warten.
  */
 export async function runReplyWorkflow(
-  onProgress?: PipelineProgressHandler
+  onProgress?: PipelineProgressHandler,
+  clarificationAnswer?: string
 ): Promise<ReplyWorkflowResult> {
   try {
     officeService.showNotification('Anfrage wird bearbeitet...');
@@ -26,11 +38,12 @@ export async function runReplyWorkflow(
     const attendees = await officeService.getRecipients();
 
     const { stream } = await streamEmailSuggestion({
-      body: { emailContent: content, attendees },
+      body: { emailContent: content, attendees, clarificationAnswer },
     });
 
     let finalReply: string | undefined;
     let meetingProposal: MeetingProposalSchema | null | undefined;
+    let clarification: ClarificationNeededEvent | null = null;
 
     for await (const raw of stream) {
       if (!isPipelineEvent(raw)) {
@@ -42,10 +55,17 @@ export async function runReplyWorkflow(
       if (raw.type === 'error') {
         throw new Error(raw.detail);
       }
+      if (raw.type === 'clarification_needed') {
+        clarification = raw;
+      }
       if (raw.type === 'done') {
         finalReply = raw.finalReply;
         meetingProposal = raw.meetingProposal;
       }
+    }
+
+    if (clarification) {
+      return { clarification };
     }
 
     if (!finalReply) {

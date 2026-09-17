@@ -54,10 +54,12 @@ export async function fetchPipelineSettings(): Promise<PipelineSettingsSchema> {
 
 export async function savePipelineSettings(
   prompt: string,
-  allowClarifyingQuestions: boolean
+  allowClarifyingQuestions: boolean,
+  tone: PipelineSettingsSchema['tone'],
+  customToneText: string | null
 ): Promise<PipelineSettingsSchema> {
   const response = await putPipelineSettings({
-    body: { prompt, allowClarifyingQuestions },
+    body: { prompt, allowClarifyingQuestions, tone, customToneText },
   });
   if (response.error || !response.data) {
     throw new Error(

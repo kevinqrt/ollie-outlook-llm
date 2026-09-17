@@ -1477,6 +1477,30 @@
             "title": "Allowclarifyingquestions",
             "description": "Ob die Pipeline vor der Antwort-Generierung R\u00fcckfragen an den Nutzer stellen darf, statt Fehlendes zu erfinden oder zu \u00fcbergehen.",
             "default": false
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "friendly",
+              "formal",
+              "casual",
+              "custom"
+            ],
+            "title": "Tone",
+            "description": "Tonalit\u00e4t, die der finalen Antwort-E-Mail zus\u00e4tzlich zum System-Prompt vorgegeben wird.",
+            "default": "friendly"
+          },
+          "customToneText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customtonetext",
+            "description": "Freitext-Tonvorgabe, nur relevant wenn tone == 'custom'."
           }
         },
         "type": "object",
@@ -1574,6 +1598,28 @@
             "type": "boolean",
             "title": "Allowclarifyingquestions",
             "default": false
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "friendly",
+              "formal",
+              "casual",
+              "custom"
+            ],
+            "title": "Tone",
+            "default": "friendly"
+          },
+          "customToneText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customtonetext"
           }
         },
         "type": "object",

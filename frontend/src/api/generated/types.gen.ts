@@ -396,6 +396,18 @@ export type PipelineSettingsSchema = {
      * Ob die Pipeline vor der Antwort-Generierung Rückfragen an den Nutzer stellen darf, statt Fehlendes zu erfinden oder zu übergehen.
      */
     allowClarifyingQuestions?: boolean;
+    /**
+     * Tone
+     *
+     * Tonalität, die der finalen Antwort-E-Mail zusätzlich zum System-Prompt vorgegeben wird.
+     */
+    tone?: 'friendly' | 'formal' | 'casual' | 'custom';
+    /**
+     * Customtonetext
+     *
+     * Freitext-Tonvorgabe, nur relevant wenn tone == 'custom'.
+     */
+    customToneText?: string | null;
 };
 
 /**
@@ -466,6 +478,14 @@ export type UpdatePipelineSettingsRequestSchema = {
      * Allowclarifyingquestions
      */
     allowClarifyingQuestions?: boolean;
+    /**
+     * Tone
+     */
+    tone?: 'friendly' | 'formal' | 'casual' | 'custom';
+    /**
+     * Customtonetext
+     */
+    customToneText?: string | null;
 };
 
 /**

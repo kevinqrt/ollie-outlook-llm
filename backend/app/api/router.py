@@ -44,6 +44,7 @@ from app.core.dependencies import (
     VectorStoreServiceDep,
 )
 from app.pipeline import run_pipeline
+from app.pipeline.prompt_builder import build_tone_instruction
 from app.services.availability import CalendarServiceError
 from app.services.graph_auth_service import GraphAuthError
 from app.services.ics_calendar_service import IcsCalendarService
@@ -124,11 +125,18 @@ async def stream_email_suggestion(
         payload.email_content, payload.attendees
     )
 
+    base_prompt = pipeline_settings_service.get_prompt()
+    tone_instruction = build_tone_instruction(
+        pipeline_settings_service.get_tone(),
+        pipeline_settings_service.get_custom_tone_text(),
+    )
+    system_prompt = f"{base_prompt}\n\n{tone_instruction}" if tone_instruction else base_prompt
+
     async def event_stream() -> AsyncIterator[str]:
         async for event in run_pipeline(
             payload.email_content,
             extra_context=augmentation.context,
-            system_prompt=pipeline_settings_service.get_prompt(),
+            system_prompt=system_prompt,
             allow_clarifying_questions=pipeline_settings_service.get_allow_clarifying_questions(),
             clarification_answer=payload.clarification_answer,
         ):
@@ -154,6 +162,8 @@ async def get_pipeline_settings(
     return PipelineSettingsSchema(
         prompt=service.get_prompt(),
         allow_clarifying_questions=service.get_allow_clarifying_questions(),
+        tone=service.get_tone(),
+        custom_tone_text=service.get_custom_tone_text(),
     )
 
 
@@ -169,11 +179,16 @@ async def put_pipeline_settings(
     service: PipelineSettingsServiceDep,
 ) -> PipelineSettingsSchema:
     service.update(
-        prompt=payload.prompt, allow_clarifying_questions=payload.allow_clarifying_questions
+        prompt=payload.prompt,
+        allow_clarifying_questions=payload.allow_clarifying_questions,
+        tone=payload.tone,
+        custom_tone_text=payload.custom_tone_text,
     )
     return PipelineSettingsSchema(
         prompt=service.get_prompt(),
         allow_clarifying_questions=service.get_allow_clarifying_questions(),
+        tone=service.get_tone(),
+        custom_tone_text=service.get_custom_tone_text(),
     )
 
 

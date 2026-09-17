@@ -48,6 +48,15 @@ INTERNAL_OUTPUT_LANGUAGE_NOTE = (
     "finale Antwort-E-Mail beziehen."
 )
 
+TONE_INSTRUCTIONS: dict[str, str] = {
+    "friendly": "TONALITÄT: Verfasse die Antwort in einem freundlichen, zugewandten Ton.",
+    "formal": (
+        "TONALITÄT: Verfasse die Antwort in einem formellen, sachlichen Ton "
+        "(z. B. 'Sehr geehrte/r ...', durchgehend Sie-Anrede)."
+    ),
+    "casual": "TONALITÄT: Verfasse die Antwort in einem lockeren, informellen Ton.",
+}
+
 CLARIFICATION_CHECK_PROMPT = (
     "Bevor du eine Antwort auf die eingegangene E-Mail formulierst, prüfe, ob dir eine "
     "Information fehlt, die NUR der Nutzer (nicht die E-Mail selbst) liefern kann und die "
@@ -68,6 +77,19 @@ CLARIFICATION_CHECK_PROMPT = (
     "Rückfrage nötig, antworte mit "
     '{"needs_clarification": false, "question": "", "options": []}.'
 )
+
+
+def build_tone_instruction(tone: str, custom_tone_text: str | None) -> str:
+    """Baut die zusätzliche Tonalitäts-Anweisung für die finale Antwort-E-Mail.
+
+    Wird IMMER zusätzlich zum aktiven System-Prompt angehängt (egal ob
+    Standard- oder gespeicherter/benutzerdefinierter Prompt) - ersetzt ihn
+    nie, ergänzt ihn nur.
+    """
+    if tone == "custom":
+        text = (custom_tone_text or "").strip()
+        return f"TONALITÄT: Verfasse die Antwort in folgendem Ton/Stil: {text}" if text else ""
+    return TONE_INSTRUCTIONS.get(tone, TONE_INSTRUCTIONS["friendly"])
 
 
 def build_planning_prompt() -> str:

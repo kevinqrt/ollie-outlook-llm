@@ -51,7 +51,13 @@ class PipelineSettingsStore:
                     self._path,
                     exc,
                 )
-        return {"prompt": None, "allow_clarifying_questions": False, "saved_prompts": []}
+        return {
+            "prompt": None,
+            "allow_clarifying_questions": False,
+            "saved_prompts": [],
+            "tone": "friendly",
+            "custom_tone_text": None,
+        }
 
     def _log_active_prompt(self) -> None:
         if self._data.get("prompt"):
@@ -71,10 +77,25 @@ class PipelineSettingsStore:
     def get_allow_clarifying_questions(self) -> bool:
         return bool(self._data.get("allow_clarifying_questions", False))
 
-    def update(self, *, prompt: str, allow_clarifying_questions: bool) -> None:
+    def get_tone(self) -> str:
+        return self._data.get("tone") or "friendly"
+
+    def get_custom_tone_text(self) -> str | None:
+        return self._data.get("custom_tone_text")
+
+    def update(
+        self,
+        *,
+        prompt: str,
+        allow_clarifying_questions: bool,
+        tone: str = "friendly",
+        custom_tone_text: str | None = None,
+    ) -> None:
         with self._lock:
             self._data["prompt"] = prompt
             self._data["allow_clarifying_questions"] = allow_clarifying_questions
+            self._data["tone"] = tone
+            self._data["custom_tone_text"] = custom_tone_text
             self._save()
 
     def list_saved_prompts(self) -> list[dict[str, str]]:

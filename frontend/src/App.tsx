@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
-import type { MeetingProposalSchema } from './api/generated';
+import type {
+  MeetingProposalSchema,
+  PipelineSettingsSchema,
+} from './api/generated';
 import type {
   ClarificationNeededEvent,
   PipelineEvent,
@@ -33,6 +36,15 @@ const STEP_ICON: Record<StepStatus, string> = {
   done: '✓',
 };
 
+type ToneOption = NonNullable<PipelineSettingsSchema['tone']>;
+
+const TONE_LABELS: Record<ToneOption, string> = {
+  friendly: 'Freundlich',
+  formal: 'Formell',
+  casual: 'Locker',
+  custom: 'Benutzerdefiniert',
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('assistant');
   const [isCompose, setIsCompose] = useState(false);
@@ -49,6 +61,8 @@ function App() {
   const [promptDraft, setPromptDraft] = useState('');
   const [allowClarifyingQuestions, setAllowClarifyingQuestions] =
     useState(false);
+  const [tone, setTone] = useState<ToneOption>('friendly');
+  const [customToneText, setCustomToneText] = useState('');
   const [savingPipelineSettings, setSavingPipelineSettings] = useState(false);
   const { notify, removeNotification } = useNotification();
   const loadingNotificationId = useRef<string | null>(null);
@@ -68,6 +82,8 @@ function App() {
       .then((s) => {
         setPromptDraft(s.prompt);
         setAllowClarifyingQuestions(s.allowClarifyingQuestions ?? false);
+        setTone(s.tone ?? 'friendly');
+        setCustomToneText(s.customToneText ?? '');
       })
       .catch((error) => {
         console.error(
@@ -79,14 +95,19 @@ function App() {
 
   async function handleSavePipelineSettings() {
     if (!promptDraft.trim()) return;
+    if (tone === 'custom' && !customToneText.trim()) return;
     setSavingPipelineSettings(true);
     try {
       const saved = await savePipelineSettings(
         promptDraft,
-        allowClarifyingQuestions
+        allowClarifyingQuestions,
+        tone,
+        tone === 'custom' ? customToneText.trim() : null
       );
       setPromptDraft(saved.prompt);
       setAllowClarifyingQuestions(saved.allowClarifyingQuestions ?? false);
+      setTone(saved.tone ?? 'friendly');
+      setCustomToneText(saved.customToneText ?? '');
       setAssistantView('main');
       notify('Einstellungen gespeichert.', 'success');
     } catch (error) {
@@ -410,6 +431,33 @@ function App() {
               />
               Rückfragen erlauben
             </label>
+            <label
+              className="pipeline-settings-field-label"
+              htmlFor="pipeline-tone"
+            >
+              Tonalität:
+            </label>
+            <select
+              id="pipeline-tone"
+              className="pipeline-settings-tone-select"
+              value={tone}
+              onChange={(e) => setTone(e.target.value as ToneOption)}
+            >
+              {(Object.keys(TONE_LABELS) as ToneOption[]).map((option) => (
+                <option key={option} value={option}>
+                  {TONE_LABELS[option]}
+                </option>
+              ))}
+            </select>
+            {tone === 'custom' && (
+              <input
+                type="text"
+                className="pipeline-settings-tone-custom-input"
+                placeholder="z. B. sehr knapp und direkt"
+                value={customToneText}
+                onChange={(e) => setCustomToneText(e.target.value)}
+              />
+            )}
             <button
               type="button"
               className="secondary-button"
@@ -421,7 +469,11 @@ function App() {
               type="button"
               className="secondary-button"
               onClick={handleSavePipelineSettings}
-              disabled={savingPipelineSettings || !promptDraft.trim()}
+              disabled={
+                savingPipelineSettings ||
+                !promptDraft.trim() ||
+                (tone === 'custom' && !customToneText.trim())
+              }
             >
               {savingPipelineSettings ? 'Speichere...' : 'Speichern'}
             </button>

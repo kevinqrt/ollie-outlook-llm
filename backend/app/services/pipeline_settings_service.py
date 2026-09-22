@@ -5,6 +5,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from app.api.schemas.pipeline_settings_schema import ToneOption
+
 logger = logging.getLogger(__name__)
 
 
@@ -77,7 +79,7 @@ class PipelineSettingsStore:
     def get_allow_clarifying_questions(self) -> bool:
         return bool(self._data.get("allow_clarifying_questions", False))
 
-    def get_tone(self) -> str:
+    def get_tone(self) -> ToneOption:
         return self._data.get("tone") or "friendly"
 
     def get_custom_tone_text(self) -> str | None:

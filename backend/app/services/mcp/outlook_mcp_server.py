@@ -6,7 +6,7 @@ from typing import Any, cast
 
 import httpx
 from mcp.server.fastmcp import FastMCP
-from msal import ConfidentialClientApplication  # type: ignore[import-untyped]
+from msal import ConfidentialClientApplication
 
 # Setup logging to stderr since stdout is used for JSON-RPC communication in stdio transport
 logging.basicConfig(
@@ -356,9 +356,7 @@ async def check_calendar_availability(start_time: str, end_time: str) -> str:
             return f"The time slot is BUSY. Found conflicts:\n{conflicts}"
         return "The time slot is FREE. No conflicts found."
     except (NoCredentialsError, MicrosoftGraphError) as ex:
-        logger.warning(
-            "Graph API availability check failed (%s). Falling back to Mock Check.", ex
-        )
+        logger.warning("Graph API availability check failed (%s). Falling back to Mock Check.", ex)
 
         # Mock checking: Simple datetime overlap check for mock events
         try:
@@ -379,9 +377,7 @@ async def check_calendar_availability(start_time: str, end_time: str) -> str:
 
             # Check overlap
             if max(check_start, e_start) < min(check_end, e_end):
-                mock_conflicts.append(
-                    f"- {event['subject']} ({e_start_str} bis {e_end_str})"
-                )
+                mock_conflicts.append(f"- {event['subject']} ({e_start_str} bis {e_end_str})")
 
         if mock_conflicts:
             return "⚠️ [MOCK MODE] The time slot is BUSY. Simulated conflicts:\n" + "\n".join(

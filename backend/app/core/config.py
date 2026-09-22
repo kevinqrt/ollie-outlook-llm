@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     chunk_overlap: int = 100
 
     model_api_base_url: str | None = None
+    # Only needed if MODEL_API_BASE_URL points at an auth-enforcing proxy
+    # (e.g. LiteLLM, which requires a virtual key starting with "sk-") rather
+    # than a raw, unauthenticated DGX tunnel.
+    model_api_key: str | None = None
     llm_max_tokens: int = 1024
 
     graph_tenant_id: str = ""

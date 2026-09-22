@@ -87,6 +87,32 @@ export class OfficeService {
     return [...new Set([...extractAddresses(to), ...extractAddresses(cc)])];
   }
 
+  /**
+   * Builds a "Betreff/Von/An/Cc" header block for the currently open message,
+   * since `getBodyText()` only returns the body - the current (outermost)
+   * message's own sender/recipients/subject aren't part of it, only those of
+   * older quoted messages further down. Without this, the AI has no way to
+   * know who wrote/received the message it's summarizing. Read mode only:
+   * in Compose mode there's no sent message yet to describe.
+   */
+  public getThreadHeader(): string {
+    if (this.isComposeMode()) return '';
+    const item = Office.context.mailbox.item as Office.MessageRead | undefined;
+    if (!item) return '';
+
+    const formatAddress = (r: Office.EmailAddressDetails) =>
+      r.displayName ? `${r.displayName} <${r.emailAddress}>` : r.emailAddress;
+
+    const lines = [
+      item.subject && `Betreff: ${item.subject}`,
+      item.from && `Von: ${formatAddress(item.from)}`,
+      item.to?.length && `An: ${item.to.map(formatAddress).join(', ')}`,
+      item.cc?.length && `Cc: ${item.cc.map(formatAddress).join(', ')}`,
+    ].filter(Boolean);
+
+    return lines.length > 0 ? `${lines.join('\n')}\n\n` : '';
+  }
+
   private async getComposeRecipients(
     recipients: Office.Recipients
   ): Promise<Office.EmailAddressDetails[]> {

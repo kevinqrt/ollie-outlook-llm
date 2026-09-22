@@ -348,6 +348,58 @@
         }
       }
     },
+    "/email/summarize": {
+      "post": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Summarize an email thread",
+        "description": "Summarize an email thread, including quoted history, in a few sentences.",
+        "operationId": "summarizeEmailThread",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadSummaryRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadSummaryResponseSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DGX model unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/knowledge/pdf": {
       "post": {
         "tags": [
@@ -1586,6 +1638,41 @@
           "url"
         ],
         "title": "SetSelfIcsUrlRequestSchema"
+      },
+      "ThreadSummaryRequestSchema": {
+        "properties": {
+          "threadText": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Threadtext",
+            "description": "The full text of the email thread to summarize, including quoted history.",
+            "examples": [
+              "Hello, can we move the meeting tomorrow to 2 PM?\n\n> On Mon, ..."
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "threadText"
+        ],
+        "title": "ThreadSummaryRequestSchema"
+      },
+      "ThreadSummaryResponseSchema": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "description": "A concise AI-generated summary of the email thread.",
+            "examples": [
+              "Max fragt, ob das Meeting morgen auf 14 Uhr verschoben werden kann."
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary"
+        ],
+        "title": "ThreadSummaryResponseSchema"
       },
       "UpdatePipelineSettingsRequestSchema": {
         "properties": {

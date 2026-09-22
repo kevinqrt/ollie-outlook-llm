@@ -467,6 +467,30 @@ export type SetSelfIcsUrlRequestSchema = {
 };
 
 /**
+ * ThreadSummaryRequestSchema
+ */
+export type ThreadSummaryRequestSchema = {
+    /**
+     * Threadtext
+     *
+     * The full text of the email thread to summarize, including quoted history.
+     */
+    threadText: string;
+};
+
+/**
+ * ThreadSummaryResponseSchema
+ */
+export type ThreadSummaryResponseSchema = {
+    /**
+     * Summary
+     *
+     * A concise AI-generated summary of the email thread.
+     */
+    summary: string;
+};
+
+/**
  * UpdatePipelineSettingsRequestSchema
  */
 export type UpdatePipelineSettingsRequestSchema = {
@@ -745,6 +769,35 @@ export type PutSavedPromptResponses = {
 };
 
 export type PutSavedPromptResponse = PutSavedPromptResponses[keyof PutSavedPromptResponses];
+
+export type SummarizeEmailThreadData = {
+    body: ThreadSummaryRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/email/summarize';
+};
+
+export type SummarizeEmailThreadErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * DGX model unavailable
+     */
+    503: ErrorResponseSchema;
+};
+
+export type SummarizeEmailThreadError = SummarizeEmailThreadErrors[keyof SummarizeEmailThreadErrors];
+
+export type SummarizeEmailThreadResponses = {
+    /**
+     * Successful Response
+     */
+    200: ThreadSummaryResponseSchema;
+};
+
+export type SummarizeEmailThreadResponse = SummarizeEmailThreadResponses[keyof SummarizeEmailThreadResponses];
 
 export type UploadPdfKnowledgePdfPostData = {
     body: BodyUploadPdfKnowledgePdfPost;

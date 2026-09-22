@@ -25,3 +25,18 @@ class EmailSuggestionRequestSchema(BaseSchema):
         "if any. Re-running with this set skips the clarification check and generates the "
         "reply directly, using the answer as extra context.",
     )
+
+
+class ThreadSummaryRequestSchema(BaseSchema):
+    thread_text: str = Field(
+        min_length=1,
+        description="The full text of the email thread to summarize, including quoted history.",
+        examples=["Hello, can we move the meeting tomorrow to 2 PM?\n\n> On Mon, ..."],
+    )
+
+
+class ThreadSummaryResponseSchema(BaseSchema):
+    summary: str = Field(
+        description="A concise AI-generated summary of the email thread.",
+        examples=["Max fragt, ob das Meeting morgen auf 14 Uhr verschoben werden kann."],
+    )

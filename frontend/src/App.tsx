@@ -18,6 +18,7 @@ import {
   savePipelineSettings,
 } from './services/pipelineSettingsWorkflow';
 import { runReplyWorkflow } from './services/replyWorkflow';
+import { summarizeThread } from './services/summaryWorkflow';
 import './App.css';
 
 type Tab = 'assistant' | 'chat' | 'knowledge';
@@ -64,6 +65,8 @@ function App() {
   const [tone, setTone] = useState<ToneOption>('friendly');
   const [customToneText, setCustomToneText] = useState('');
   const [savingPipelineSettings, setSavingPipelineSettings] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const { notify, removeNotification } = useNotification();
   const loadingNotificationId = useRef<string | null>(null);
 
@@ -237,6 +240,24 @@ function App() {
     setAssistantView('settings');
   }
 
+  async function handleSummarize() {
+    setIsSummarizing(true);
+    setSummary(null);
+    try {
+      const result = await summarizeThread();
+      setSummary(result);
+    } catch (error) {
+      console.error('Summarize error:', error);
+      const msg =
+        error instanceof Error
+          ? error.message
+          : 'Zusammenfassung fehlgeschlagen.';
+      notify(`Fehler: ${msg}`, 'error');
+    } finally {
+      setIsSummarizing(false);
+    }
+  }
+
   return (
     <main className="taskpane-minimal">
       <header className="branding">
@@ -396,6 +417,21 @@ function App() {
                 </p>
               </div>
             )}
+
+            <div className="action-card">
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={isSummarizing}
+                onClick={handleSummarize}
+              >
+                {isSummarizing
+                  ? 'Fasse zusammen...'
+                  : '🧵 Thread zusammenfassen'}
+              </button>
+
+              {summary && <p className="summary-panel">{summary}</p>}
+            </div>
           </>
         )}
 

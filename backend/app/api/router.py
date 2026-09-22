@@ -20,7 +20,12 @@ from app.api.schemas.calendar_schema import (
     SetSelfIcsUrlRequestSchema,
 )
 from app.api.schemas.chat_schema import ChatRequestSchema, ChatResponseSchema
-from app.api.schemas.email_schema import EmailSuggestionRequestSchema, HealthResponseSchema
+from app.api.schemas.email_schema import (
+    EmailSuggestionRequestSchema,
+    HealthResponseSchema,
+    ThreadSummaryRequestSchema,
+    ThreadSummaryResponseSchema,
+)
 from app.api.schemas.knowledge_schema import (
     KnowledgeDocumentListSchema,
     KnowledgeSearchResponseSchema,
@@ -43,7 +48,8 @@ from app.core.dependencies import (
     SchedulingServiceDep,
     VectorStoreServiceDep,
 )
-from app.pipeline import run_pipeline
+from app.pipeline import run_pipeline, summarize_thread
+from app.pipeline.llm_client import LlmClientError
 from app.services.availability import CalendarServiceError
 from app.services.graph_auth_service import GraphAuthError
 from app.services.ics_calendar_service import IcsCalendarService
@@ -139,6 +145,28 @@ async def stream_email_suggestion(
             yield f"data: {event.model_dump_json(by_alias=True)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@api_router.post(
+    "/email/summarize",
+    response_model=ThreadSummaryResponseSchema,
+    summary="Summarize an email thread",
+    responses={503: {"model": ErrorResponseSchema, "description": "DGX model unavailable"}},
+    tags=["email"],
+    operation_id="summarizeEmailThread",
+)
+async def summarize_email_thread(
+    payload: ThreadSummaryRequestSchema,
+) -> ThreadSummaryResponseSchema:
+    """Summarize an email thread, including quoted history, in a few sentences."""
+    try:
+        summary = await summarize_thread(payload.thread_text)
+        return ThreadSummaryResponseSchema(summary=summary)
+    except LlmClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
 
 @api_router.get(

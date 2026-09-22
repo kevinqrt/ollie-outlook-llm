@@ -217,6 +217,24 @@ h1 {
   width: 1.2em;
 }
 
+.action-card + .action-card,
+.info-card + .action-card {
+  margin-top: 16px;
+}
+
+.summary-panel {
+  margin: 16px 0 0;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-align: left;
+  white-space: pre-wrap;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
 .assistant-toolbar {
   display: flex;
   justify-content: flex-end;

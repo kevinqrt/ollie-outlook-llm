@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteCalendarIcsKnownData, DeleteCalendarIcsKnownErrors, DeleteCalendarIcsKnownResponses, DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, DeleteSavedPromptData, DeleteSavedPromptErrors, DeleteSavedPromptResponses, GetCalendarAuthLoginData, GetCalendarAuthLoginErrors, GetCalendarAuthLoginResponses, GetCalendarAuthStatusData, GetCalendarAuthStatusResponses, GetCalendarEventsData, GetCalendarEventsErrors, GetCalendarEventsResponses, GetCalendarIcsKnownData, GetCalendarIcsKnownErrors, GetCalendarIcsKnownResponses, GetCalendarIcsStatusData, GetCalendarIcsStatusErrors, GetCalendarIcsStatusResponses, GetHealthData, GetHealthResponses, GetPipelineSettingsData, GetPipelineSettingsResponses, GetSavedPromptsData, GetSavedPromptsResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostCalendarAuthCallbackData, PostCalendarAuthCallbackErrors, PostCalendarAuthCallbackResponses, PostCalendarIcsKnownData, PostCalendarIcsKnownErrors, PostCalendarIcsKnownResponses, PostCalendarIcsSelfData, PostCalendarIcsSelfErrors, PostCalendarIcsSelfResponses, PostCalendarMeetingTimesData, PostCalendarMeetingTimesErrors, PostCalendarMeetingTimesResponses, PostChatData, PostChatErrors, PostChatResponses, PostSavedPromptData, PostSavedPromptErrors, PostSavedPromptResponses, PutPipelineSettingsData, PutPipelineSettingsErrors, PutPipelineSettingsResponses, PutSavedPromptData, PutSavedPromptErrors, PutSavedPromptResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
+import type { DeleteCalendarIcsKnownData, DeleteCalendarIcsKnownErrors, DeleteCalendarIcsKnownResponses, DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, DeleteSavedPromptData, DeleteSavedPromptErrors, DeleteSavedPromptResponses, GetCalendarAuthLoginData, GetCalendarAuthLoginErrors, GetCalendarAuthLoginResponses, GetCalendarAuthStatusData, GetCalendarAuthStatusResponses, GetCalendarEventsData, GetCalendarEventsErrors, GetCalendarEventsResponses, GetCalendarIcsKnownData, GetCalendarIcsKnownErrors, GetCalendarIcsKnownResponses, GetCalendarIcsStatusData, GetCalendarIcsStatusErrors, GetCalendarIcsStatusResponses, GetHealthData, GetHealthResponses, GetPipelineSettingsData, GetPipelineSettingsResponses, GetSavedPromptsData, GetSavedPromptsResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostCalendarAuthCallbackData, PostCalendarAuthCallbackErrors, PostCalendarAuthCallbackResponses, PostCalendarIcsKnownData, PostCalendarIcsKnownErrors, PostCalendarIcsKnownResponses, PostCalendarIcsSelfData, PostCalendarIcsSelfErrors, PostCalendarIcsSelfResponses, PostCalendarMeetingTimesData, PostCalendarMeetingTimesErrors, PostCalendarMeetingTimesResponses, PostChatData, PostChatErrors, PostChatResponses, PostSavedPromptData, PostSavedPromptErrors, PostSavedPromptResponses, PutPipelineSettingsData, PutPipelineSettingsErrors, PutPipelineSettingsResponses, PutSavedPromptData, PutSavedPromptErrors, PutSavedPromptResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses, SummarizeEmailThreadData, SummarizeEmailThreadErrors, SummarizeEmailThreadResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -56,6 +56,20 @@ export const postChat = <ThrowOnError extends boolean = false>(options: Options<
  */
 export const streamEmailSuggestion = <ThrowOnError extends boolean = false>(options: Options<StreamEmailSuggestionData, ThrowOnError, StreamEmailSuggestionResponse>) => (options.client ?? client).sse.post<StreamEmailSuggestionResponses, StreamEmailSuggestionErrors, ThrowOnError>({
     url: '/email/suggestion/stream',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Summarize an email thread
+ *
+ * Summarize an email thread, including quoted history, in a few sentences.
+ */
+export const summarizeEmailThread = <ThrowOnError extends boolean = false>(options: Options<SummarizeEmailThreadData, ThrowOnError>) => (options.client ?? client).post<SummarizeEmailThreadResponses, SummarizeEmailThreadErrors, ThrowOnError>({
+    url: '/email/summarize',
     ...options,
     headers: {
         'Content-Type': 'application/json',

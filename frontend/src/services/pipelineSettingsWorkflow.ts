@@ -10,7 +10,7 @@ import {
   type ValidationError,
 } from '../api/generated';
 
-function extractErrorMessage(
+export function extractErrorMessage(
   error: { detail?: string | ValidationError[] } | null | undefined,
   status?: number
 ): string {

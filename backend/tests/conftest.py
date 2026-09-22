@@ -23,6 +23,7 @@ def client(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Generator[TestClient]:
     monkeypatch.setattr(
         settings, "pipeline_settings_path", str(tmp_path / "pipeline_settings.json")
     )
+    monkeypatch.setattr(settings, "style_rules_path", str(tmp_path / "style_rules.json"))
     with TestClient(app) as c:
         yield c
 
@@ -40,5 +41,6 @@ def graph_client(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Generator[TestCli
     monkeypatch.setattr(
         settings, "pipeline_settings_path", str(tmp_path / "pipeline_settings.json")
     )
+    monkeypatch.setattr(settings, "style_rules_path", str(tmp_path / "style_rules.json"))
     with TestClient(app) as c:
         yield c

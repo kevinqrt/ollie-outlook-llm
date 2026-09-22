@@ -40,3 +40,7 @@ certs/
 backend/token_cache.json
 backend/ics_calendars.json
 backend/pipeline_settings.json
+backend/style_rules.json
+
+# Brag video output
+brag-output-*/

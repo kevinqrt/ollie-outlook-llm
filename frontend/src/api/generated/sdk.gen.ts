@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteCalendarIcsKnownData, DeleteCalendarIcsKnownErrors, DeleteCalendarIcsKnownResponses, DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, DeleteSavedPromptData, DeleteSavedPromptErrors, DeleteSavedPromptResponses, GetCalendarAuthLoginData, GetCalendarAuthLoginErrors, GetCalendarAuthLoginResponses, GetCalendarAuthStatusData, GetCalendarAuthStatusResponses, GetCalendarEventsData, GetCalendarEventsErrors, GetCalendarEventsResponses, GetCalendarIcsKnownData, GetCalendarIcsKnownErrors, GetCalendarIcsKnownResponses, GetCalendarIcsStatusData, GetCalendarIcsStatusErrors, GetCalendarIcsStatusResponses, GetHealthData, GetHealthResponses, GetPipelineSettingsData, GetPipelineSettingsResponses, GetSavedPromptsData, GetSavedPromptsResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostCalendarAuthCallbackData, PostCalendarAuthCallbackErrors, PostCalendarAuthCallbackResponses, PostCalendarIcsKnownData, PostCalendarIcsKnownErrors, PostCalendarIcsKnownResponses, PostCalendarIcsSelfData, PostCalendarIcsSelfErrors, PostCalendarIcsSelfResponses, PostCalendarMeetingTimesData, PostCalendarMeetingTimesErrors, PostCalendarMeetingTimesResponses, PostChatData, PostChatErrors, PostChatResponses, PostSavedPromptData, PostSavedPromptErrors, PostSavedPromptResponses, PutPipelineSettingsData, PutPipelineSettingsErrors, PutPipelineSettingsResponses, PutSavedPromptData, PutSavedPromptErrors, PutSavedPromptResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses, SummarizeEmailThreadData, SummarizeEmailThreadErrors, SummarizeEmailThreadResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
+import type { DeleteAllStyleRulesData, DeleteAllStyleRulesResponses, DeleteCalendarIcsKnownData, DeleteCalendarIcsKnownErrors, DeleteCalendarIcsKnownResponses, DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, DeleteSavedPromptData, DeleteSavedPromptErrors, DeleteSavedPromptResponses, DeleteStyleRuleData, DeleteStyleRuleErrors, DeleteStyleRuleResponses, GetCalendarAuthLoginData, GetCalendarAuthLoginErrors, GetCalendarAuthLoginResponses, GetCalendarAuthStatusData, GetCalendarAuthStatusResponses, GetCalendarEventsData, GetCalendarEventsErrors, GetCalendarEventsResponses, GetCalendarIcsKnownData, GetCalendarIcsKnownErrors, GetCalendarIcsKnownResponses, GetCalendarIcsStatusData, GetCalendarIcsStatusErrors, GetCalendarIcsStatusResponses, GetHealthData, GetHealthResponses, GetPipelineSettingsData, GetPipelineSettingsResponses, GetSavedPromptsData, GetSavedPromptsResponses, GetStyleRulesData, GetStyleRulesResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostCalendarAuthCallbackData, PostCalendarAuthCallbackErrors, PostCalendarAuthCallbackResponses, PostCalendarIcsKnownData, PostCalendarIcsKnownErrors, PostCalendarIcsKnownResponses, PostCalendarIcsSelfData, PostCalendarIcsSelfErrors, PostCalendarIcsSelfResponses, PostCalendarMeetingTimesData, PostCalendarMeetingTimesErrors, PostCalendarMeetingTimesResponses, PostChatData, PostChatErrors, PostChatResponses, PostCorrectionData, PostCorrectionErrors, PostCorrectionResponses, PostReplyRevisionData, PostReplyRevisionErrors, PostReplyRevisionResponses, PostSavedPromptData, PostSavedPromptErrors, PostSavedPromptResponses, PutPipelineSettingsData, PutPipelineSettingsErrors, PutPipelineSettingsResponses, PutSavedPromptData, PutSavedPromptErrors, PutSavedPromptResponses, PutStyleRulesSettingsData, PutStyleRulesSettingsErrors, PutStyleRulesSettingsResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses, SummarizeEmailThreadData, SummarizeEmailThreadErrors, SummarizeEmailThreadResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -51,11 +51,30 @@ export const postChat = <ThrowOnError extends boolean = false>(options: Options<
  * pipeline is augmented with real availability, and the final `done` event
  * carries a concrete meeting proposal.
  *
- * The system prompt and whether the pipeline may ask a clarifying question
- * before answering come from the user-configurable pipeline settings.
+ * The system prompt, tone and whether the pipeline may ask a clarifying question
+ * before answering come from the user-configurable pipeline settings; style
+ * rules learned from earlier user corrections are appended to the prompt.
  */
 export const streamEmailSuggestion = <ThrowOnError extends boolean = false>(options: Options<StreamEmailSuggestionData, ThrowOnError, StreamEmailSuggestionResponse>) => (options.client ?? client).sse.post<StreamEmailSuggestionResponses, StreamEmailSuggestionErrors, ThrowOnError>({
     url: '/email/suggestion/stream',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Revise an already suggested reply according to user feedback
+ *
+ * Rewrite the previous reply with a single LLM call, applying the feedback.
+ *
+ * Uses the same system prompt as a fresh suggestion (base prompt, tone and
+ * learned style rules) but skips the multi-step pipeline. The feedback applies
+ * to this one reply only; it is not stored.
+ */
+export const postReplyRevision = <ThrowOnError extends boolean = false>(options: Options<PostReplyRevisionData, ThrowOnError>) => (options.client ?? client).post<PostReplyRevisionResponses, PostReplyRevisionErrors, ThrowOnError>({
+    url: '/email/suggestion/revise',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -119,6 +138,49 @@ export const putSavedPrompt = <ThrowOnError extends boolean = false>(options: Op
         ...options.headers
     }
 });
+
+/**
+ * Delete all learned style rules
+ */
+export const deleteAllStyleRules = <ThrowOnError extends boolean = false>(options?: Options<DeleteAllStyleRulesData, ThrowOnError>) => (options?.client ?? client).delete<DeleteAllStyleRulesResponses, unknown, ThrowOnError>({ url: '/pipeline/style-rules', ...options });
+
+/**
+ * List the style rules learned from user corrections
+ */
+export const getStyleRules = <ThrowOnError extends boolean = false>(options?: Options<GetStyleRulesData, ThrowOnError>) => (options?.client ?? client).get<GetStyleRulesResponses, unknown, ThrowOnError>({ url: '/pipeline/style-rules', ...options });
+
+/**
+ * Switch learning from user corrections on or off
+ */
+export const putStyleRulesSettings = <ThrowOnError extends boolean = false>(options: Options<PutStyleRulesSettingsData, ThrowOnError>) => (options.client ?? client).put<PutStyleRulesSettingsResponses, PutStyleRulesSettingsErrors, ThrowOnError>({
+    url: '/pipeline/style-rules/settings',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Learn a style rule from a user correction of a suggested reply
+ *
+ * Derive one short, general style rule from the correction and store it.
+ *
+ * Only the rule text is stored, never the reply or the e-mail it came from.
+ */
+export const postCorrection = <ThrowOnError extends boolean = false>(options: Options<PostCorrectionData, ThrowOnError>) => (options.client ?? client).post<PostCorrectionResponses, PostCorrectionErrors, ThrowOnError>({
+    url: '/pipeline/corrections',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete one learned style rule
+ */
+export const deleteStyleRule = <ThrowOnError extends boolean = false>(options: Options<DeleteStyleRuleData, ThrowOnError>) => (options.client ?? client).delete<DeleteStyleRuleResponses, DeleteStyleRuleErrors, ThrowOnError>({ url: '/pipeline/style-rules/{rule_id}', ...options });
 
 /**
  * Summarize an email thread

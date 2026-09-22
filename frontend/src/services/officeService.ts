@@ -16,13 +16,14 @@ export class OfficeService {
     });
   }
 
+  /** Fügt `text` am Cursor ein - nur für den allerersten Einfüge-Versuch. */
   public async insertText(text: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const item = Office.context.mailbox.item;
-      if (!item || !('body' in item)) {
-        return reject(new Error('Schreibzugriff nicht möglich.'));
-      }
+    const item = Office.context.mailbox.item;
+    if (!item || !('body' in item)) {
+      throw new Error('Schreibzugriff nicht möglich.');
+    }
 
+    return new Promise((resolve, reject) => {
       const htmlText = text.replace(/\n/g, '<br>');
       item.body.setSelectedDataAsync(
         htmlText,
@@ -45,6 +46,51 @@ export class OfficeService {
         }
       );
     });
+  }
+
+  /**
+   * Ersetzt den kompletten Entwurf durch `text` - keine Suche, kein Anker,
+   * kein Versuch mehr, irgendetwas vom vorherigen Inhalt (alte KI-Antwort
+   * oder zitierter Original-Verlauf) zu erhalten. Frühere Versionen haben
+   * versucht, nur die alte Antwort zu ersetzen und den Rest (den zitierten
+   * Verlauf) zu erhalten - das ist am Ende an zwei Dingen gescheitert: Outlooks
+   * internes Dokumentmodell hat eigene Marker (Attribut wie Kommentar)
+   * zuverlässig verloren, und ein reiner Text-Anker hat zwar die alte Antwort
+   * gefunden, dabei aber Outlooks eigene HTML-Formatierung des zitierten
+   * Verlaufs plattgewalzt und bei mehrstufigen Threads unnötig viele alte
+   * Rohdaten (Adressen, Zeitstempel) mit durchgereicht. Der Body enthält nach
+   * dieser Methode ausschließlich die neue Antwort - bewusste, bestätigte
+   * Design-Entscheidung.
+   *
+   * Schlägt das Schreiben selbst fehl (seltener Office.js-Fehlerfall), wird
+   * als letzte Notlösung stattdessen am Cursor eingefügt (`insertText`); der
+   * Rückgabewert `'inserted'` markiert genau diesen - dann tatsächlich
+   * unvollständigen - Fall.
+   */
+  public async replaceInsertedText(
+    text: string
+  ): Promise<'replaced' | 'inserted'> {
+    const item = Office.context.mailbox.item;
+    if (!item || !('body' in item)) {
+      throw new Error('Schreibzugriff nicht möglich.');
+    }
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        item.body.setAsync(
+          text.replace(/\n/g, '<br>'),
+          { coercionType: Office.CoercionType.Html },
+          (result) => {
+            if (result.status === Office.AsyncResultStatus.Succeeded) resolve();
+            else reject(new Error('Ersetzen fehlgeschlagen.'));
+          }
+        );
+      });
+      return 'replaced';
+    } catch {
+      await this.insertText(text);
+      return 'inserted';
+    }
   }
 
   /**

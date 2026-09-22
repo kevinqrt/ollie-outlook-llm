@@ -1,7 +1,7 @@
 import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -82,3 +82,39 @@ def test_stream_email_suggestion_includes_meeting_proposal(client: TestClient) -
     done_event = events[-1]
     assert done_event["type"] == "done"
     assert done_event["meetingProposal"]["subject"] == "Sprint Planning"
+
+
+def _capture_system_prompt(client: TestClient) -> str:
+    captured: dict[str, str] = {}
+
+    async def _capturing_pipeline(_email: str, **kwargs: str) -> AsyncIterator[PipelineEvent]:
+        captured["system_prompt"] = kwargs["system_prompt"]
+        yield DoneEvent(final_reply="Fertige Antwort")
+
+    with patch("app.api.router.run_pipeline", _capturing_pipeline):
+        _read_events(client, {"emailContent": "Testmail"})
+    return captured["system_prompt"]
+
+
+def test_stream_email_suggestion_appends_learned_style_rules(client: TestClient) -> None:
+    with patch("app.api.router.derive_style_rule", AsyncMock(return_value="Duze den Empfänger.")):
+        client.post("/pipeline/corrections", json={"originalReply": "Antwort", "feedback": "duzen"})
+
+    system_prompt = _capture_system_prompt(client)
+
+    assert "GELERNTE STILVORGABEN" in system_prompt
+    assert "- Duze den Empfänger." in system_prompt
+
+
+def test_stream_email_suggestion_ignores_style_rules_when_learning_is_off(
+    client: TestClient,
+) -> None:
+    with patch("app.api.router.derive_style_rule", AsyncMock(return_value="Duze den Empfänger.")):
+        client.post("/pipeline/corrections", json={"originalReply": "Antwort", "feedback": "duzen"})
+    client.put("/pipeline/style-rules/settings", json={"enabled": False})
+
+    assert "GELERNTE STILVORGABEN" not in _capture_system_prompt(client)
+
+
+def test_stream_email_suggestion_without_rules_has_no_style_section(client: TestClient) -> None:
+    assert "GELERNTE STILVORGABEN" not in _capture_system_prompt(client)

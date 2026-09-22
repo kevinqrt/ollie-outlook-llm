@@ -10,6 +10,7 @@ import type {
 import { ChatAssistant } from './components/ChatAssistant';
 import { KnowledgeBase } from './components/KnowledgeBase';
 import { PromptLibrary } from './components/PromptLibrary';
+import { StyleRules } from './components/StyleRules';
 import { useNotification } from './context/NotificationContext';
 import { openCalendarComposeWindow } from './services/calendarWorkflow';
 import { officeService } from './services/officeService';
@@ -17,12 +18,13 @@ import {
   fetchPipelineSettings,
   savePipelineSettings,
 } from './services/pipelineSettingsWorkflow';
-import { runReplyWorkflow } from './services/replyWorkflow';
+import { reviseReply, runReplyWorkflow } from './services/replyWorkflow';
+import { submitCorrection } from './services/styleRulesWorkflow';
 import { summarizeThread } from './services/summaryWorkflow';
 import './App.css';
 
 type Tab = 'assistant' | 'chat' | 'knowledge';
-type AssistantView = 'main' | 'settings' | 'library';
+type AssistantView = 'main' | 'settings' | 'library' | 'rules';
 type StepStatus = 'pending' | 'running' | 'done';
 
 type PipelineStep = {
@@ -67,6 +69,11 @@ function App() {
   const [savingPipelineSettings, setSavingPipelineSettings] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
+  const [lastReply, setLastReply] = useState<string | null>(null);
+  const [lastEmailContent, setLastEmailContent] = useState<string | null>(null);
+  const [revising, setRevising] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const { notify, removeNotification } = useNotification();
   const loadingNotificationId = useRef<string | null>(null);
 
@@ -170,10 +177,14 @@ function App() {
   }
 
   function handleAction(clarificationAnswer?: string) {
+    const previousReply = lastReply ?? undefined;
     setSteps([]);
     setIsPlanning(true);
     setMeetingProposal(null);
     setClarification(null);
+    setLastReply(null);
+    setLastEmailContent(null);
+    setFeedbackText('');
 
     startTransition(async () => {
       if (loadingNotificationId.current) {
@@ -189,7 +200,8 @@ function App() {
       try {
         const result = await runReplyWorkflow(
           handleProgress,
-          clarificationAnswer
+          clarificationAnswer,
+          previousReply
         );
 
         if (loadingNotificationId.current) {
@@ -203,6 +215,8 @@ function App() {
         }
 
         setMeetingProposal(result.meetingProposal ?? null);
+        setLastReply(result.finalReply ?? null);
+        setLastEmailContent(result.emailContent ?? null);
         notify('Vorschlag erfolgreich eingefügt!', 'success');
       } catch (error) {
         console.error('Workflow error:', error);
@@ -227,6 +241,65 @@ function App() {
         setIsPlanning(false);
       }
     });
+  }
+
+  async function handleRevise() {
+    if (!lastReply || !lastEmailContent || revising) return;
+    if (!feedbackText.trim()) return;
+    setRevising(true);
+    try {
+      const result = await reviseReply(
+        lastEmailContent,
+        lastReply,
+        feedbackText.trim()
+      );
+      setLastReply(result.reply);
+      setFeedbackText('');
+      if (result.placement === 'replaced') {
+        notify('Antwort überarbeitet.', 'success');
+      } else {
+        notify(
+          'Ersetzen fehlgeschlagen, Antwort wurde am Cursor eingefügt.',
+          'error'
+        );
+      }
+    } catch (error) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : 'Antwort konnte nicht überarbeitet werden.';
+      notify(`Fehler: ${msg}`, 'error');
+      console.error('Revise reply error:', error);
+    } finally {
+      setRevising(false);
+    }
+  }
+
+  async function handleSubmitFeedback() {
+    if (!lastReply || submittingFeedback) return;
+    if (!feedbackText.trim()) return;
+    setSubmittingFeedback(true);
+    try {
+      const result = await submitCorrection(lastReply, feedbackText, '');
+      if (result.learned && result.rule) {
+        notify(`Gemerkt: ${result.rule.text}`, 'success');
+      } else {
+        notify(
+          'Keine neue Stilregel erkannt (nur der Inhalt wurde geändert oder die Regel ist schon bekannt).',
+          'info'
+        );
+      }
+      setFeedbackText('');
+    } catch (error) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : 'Feedback konnte nicht gespeichert werden.';
+      notify(`Fehler: ${msg}`, 'error');
+      console.error('Submit correction error:', error);
+    } finally {
+      setSubmittingFeedback(false);
+    }
   }
 
   function handleClarificationAnswer(answer: string) {
@@ -332,6 +405,54 @@ function App() {
                   >
                     📅 Termin im Kalender öffnen
                   </button>
+                )}
+
+                {lastReply && !isPending && (
+                  <div className="feedback-block">
+                    <label
+                      className="pipeline-settings-field-label"
+                      htmlFor="reply-feedback"
+                    >
+                      Was soll Ollie künftig anders machen?
+                    </label>
+                    <div className="feedback-row">
+                      <input
+                        id="reply-feedback"
+                        type="text"
+                        placeholder="z. B. kürzer, immer duzen"
+                        value={feedbackText}
+                        onChange={(e) => setFeedbackText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleRevise();
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="feedback-actions">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={
+                          revising || !lastEmailContent || !feedbackText.trim()
+                        }
+                        onClick={handleRevise}
+                      >
+                        {revising ? 'Überarbeite...' : 'Neu generieren'}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-button"
+                        disabled={submittingFeedback || !feedbackText.trim()}
+                        onClick={handleSubmitFeedback}
+                      >
+                        {submittingFeedback
+                          ? 'Merke...'
+                          : 'Für die Zukunft merken'}
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {clarification && (
@@ -504,6 +625,13 @@ function App() {
             <button
               type="button"
               className="secondary-button"
+              onClick={() => setAssistantView('rules')}
+            >
+              Gelernte Stilregeln
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
               onClick={handleSavePipelineSettings}
               disabled={
                 savingPipelineSettings ||
@@ -521,6 +649,10 @@ function App() {
             onSelect={handleSelectSavedPrompt}
             onBack={() => setAssistantView('settings')}
           />
+        )}
+
+        {activeTab === 'assistant' && assistantView === 'rules' && (
+          <StyleRules onBack={() => setAssistantView('settings')} />
         )}
 
         {activeTab === 'chat' && <ChatAssistant />}

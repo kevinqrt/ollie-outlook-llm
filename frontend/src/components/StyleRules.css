@@ -1,0 +1,111 @@
+.style-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.style-rules-header {
+  display: flex;
+  align-items: center;
+}
+
+.style-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.style-rule {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.style-rule[data-inactive="true"] {
+  opacity: 0.55;
+}
+
+.style-rule-text {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.style-rule-delete-button {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  background: white;
+  border: 1px solid var(--error);
+  border-radius: 4px;
+  color: var(--error);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.style-rule-delete-button:hover:not(:disabled) {
+  background-color: #fdf3f4;
+}
+
+.style-rule-delete-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.style-rules-error {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--error);
+  border-radius: 6px;
+  background-color: #fdf3f4;
+  color: var(--error);
+  font-size: 0.85rem;
+}
+
+.style-rules-error p {
+  margin: 0;
+}
+
+.style-rules-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--error);
+  border-radius: 4px;
+  background-color: #fdf3f4;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.style-rules-confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.style-rules-confirm-delete-button {
+  padding: 6px 14px;
+  background: var(--error);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.style-rules-confirm-delete-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

@@ -131,6 +131,43 @@ export type ChatResponseSchema = {
 };
 
 /**
+ * CorrectionResponseSchema
+ */
+export type CorrectionResponseSchema = {
+    /**
+     * Learned
+     *
+     * Ob aus der Korrektur eine neue Stilregel entstanden ist. False, wenn nur der Inhalt geändert wurde oder die Regel bereits bekannt ist.
+     */
+    learned: boolean;
+    rule?: StyleRuleSchema | null;
+};
+
+/**
+ * CreateCorrectionRequestSchema
+ */
+export type CreateCorrectionRequestSchema = {
+    /**
+     * Originalreply
+     *
+     * Der von Ollie vorgeschlagene Antworttext.
+     */
+    originalReply: string;
+    /**
+     * Feedback
+     *
+     * Freitext-Anweisung, was künftig anders sein soll (z. B. 'kürzer').
+     */
+    feedback?: string | null;
+    /**
+     * Correctedreply
+     *
+     * Optional: die vom Nutzer korrigierte Fassung der Antwort.
+     */
+    correctedReply?: string | null;
+};
+
+/**
  * CreateSavedPromptRequestSchema
  */
 export type CreateSavedPromptRequestSchema = {
@@ -411,6 +448,42 @@ export type PipelineSettingsSchema = {
 };
 
 /**
+ * ReviseReplyRequestSchema
+ */
+export type ReviseReplyRequestSchema = {
+    /**
+     * Emailcontent
+     *
+     * The text of the received email the reply answers.
+     */
+    emailContent: string;
+    /**
+     * Previousreply
+     *
+     * The reply that was suggested before and should be revised.
+     */
+    previousReply: string;
+    /**
+     * Feedback
+     *
+     * What the user wants changed in this reply (e.g. 'kürzer').
+     */
+    feedback: string;
+};
+
+/**
+ * ReviseReplyResponseSchema
+ */
+export type ReviseReplyResponseSchema = {
+    /**
+     * Finalreply
+     *
+     * The revised reply text.
+     */
+    finalReply: string;
+};
+
+/**
  * SavedPromptListSchema
  */
 export type SavedPromptListSchema = {
@@ -467,6 +540,38 @@ export type SetSelfIcsUrlRequestSchema = {
 };
 
 /**
+ * StyleRuleSchema
+ */
+export type StyleRuleSchema = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Text
+     *
+     * Kurze, allgemeine Stilregel, abgeleitet aus einer Korrektur.
+     */
+    text: string;
+};
+
+/**
+ * StyleRulesSchema
+ */
+export type StyleRulesSchema = {
+    /**
+     * Enabled
+     *
+     * Ob gelernte Regeln bei neuen Antwortvorschlägen berücksichtigt (und neue Korrekturen gelernt) werden.
+     */
+    enabled: boolean;
+    /**
+     * Rules
+     */
+    rules: Array<StyleRuleSchema>;
+};
+
+/**
  * ThreadSummaryRequestSchema
  */
 export type ThreadSummaryRequestSchema = {
@@ -520,6 +625,16 @@ export type UpdateSavedPromptRequestSchema = {
      * Text
      */
     text: string;
+};
+
+/**
+ * UpdateStyleRulesSettingsRequestSchema
+ */
+export type UpdateStyleRulesSettingsRequestSchema = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
 };
 
 /**
@@ -619,6 +734,35 @@ export type StreamEmailSuggestionResponses = {
 };
 
 export type StreamEmailSuggestionResponse = StreamEmailSuggestionResponses[keyof StreamEmailSuggestionResponses];
+
+export type PostReplyRevisionData = {
+    body: ReviseReplyRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/email/suggestion/revise';
+};
+
+export type PostReplyRevisionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * LLM unavailable
+     */
+    503: ErrorResponseSchema;
+};
+
+export type PostReplyRevisionError = PostReplyRevisionErrors[keyof PostReplyRevisionErrors];
+
+export type PostReplyRevisionResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReviseReplyResponseSchema;
+};
+
+export type PostReplyRevisionResponse = PostReplyRevisionResponses[keyof PostReplyRevisionResponses];
 
 export type GetPipelineSettingsData = {
     body?: never;
@@ -769,6 +913,130 @@ export type PutSavedPromptResponses = {
 };
 
 export type PutSavedPromptResponse = PutSavedPromptResponses[keyof PutSavedPromptResponses];
+
+export type DeleteAllStyleRulesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/pipeline/style-rules';
+};
+
+export type DeleteAllStyleRulesResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteAllStyleRulesResponse = DeleteAllStyleRulesResponses[keyof DeleteAllStyleRulesResponses];
+
+export type GetStyleRulesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/pipeline/style-rules';
+};
+
+export type GetStyleRulesResponses = {
+    /**
+     * Successful Response
+     */
+    200: StyleRulesSchema;
+};
+
+export type GetStyleRulesResponse = GetStyleRulesResponses[keyof GetStyleRulesResponses];
+
+export type PutStyleRulesSettingsData = {
+    body: UpdateStyleRulesSettingsRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/pipeline/style-rules/settings';
+};
+
+export type PutStyleRulesSettingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PutStyleRulesSettingsError = PutStyleRulesSettingsErrors[keyof PutStyleRulesSettingsErrors];
+
+export type PutStyleRulesSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: StyleRulesSchema;
+};
+
+export type PutStyleRulesSettingsResponse = PutStyleRulesSettingsResponses[keyof PutStyleRulesSettingsResponses];
+
+export type PostCorrectionData = {
+    body: CreateCorrectionRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/pipeline/corrections';
+};
+
+export type PostCorrectionErrors = {
+    /**
+     * Learning is switched off
+     */
+    409: ErrorResponseSchema;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * LLM unavailable
+     */
+    503: ErrorResponseSchema;
+};
+
+export type PostCorrectionError = PostCorrectionErrors[keyof PostCorrectionErrors];
+
+export type PostCorrectionResponses = {
+    /**
+     * Successful Response
+     */
+    200: CorrectionResponseSchema;
+};
+
+export type PostCorrectionResponse = PostCorrectionResponses[keyof PostCorrectionResponses];
+
+export type DeleteStyleRuleData = {
+    body?: never;
+    path: {
+        /**
+         * Rule Id
+         */
+        rule_id: string;
+    };
+    query?: never;
+    url: '/pipeline/style-rules/{rule_id}';
+};
+
+export type DeleteStyleRuleErrors = {
+    /**
+     * Rule not found
+     */
+    404: ErrorResponseSchema;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteStyleRuleError = DeleteStyleRuleErrors[keyof DeleteStyleRuleErrors];
+
+export type DeleteStyleRuleResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteStyleRuleResponse = DeleteStyleRuleResponses[keyof DeleteStyleRuleResponses];
 
 export type SummarizeEmailThreadData = {
     body: ThreadSummaryRequestSchema;

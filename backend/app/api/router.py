@@ -23,6 +23,8 @@ from app.api.schemas.chat_schema import ChatRequestSchema, ChatResponseSchema
 from app.api.schemas.email_schema import (
     EmailSuggestionRequestSchema,
     HealthResponseSchema,
+    ReviseReplyRequestSchema,
+    ReviseReplyResponseSchema,
     ThreadSummaryRequestSchema,
     ThreadSummaryResponseSchema,
 )
@@ -40,24 +42,59 @@ from app.api.schemas.pipeline_settings_schema import (
     UpdatePipelineSettingsRequestSchema,
     UpdateSavedPromptRequestSchema,
 )
+from app.api.schemas.style_rules_schema import (
+    CorrectionResponseSchema,
+    CreateCorrectionRequestSchema,
+    StyleRuleSchema,
+    StyleRulesSchema,
+    UpdateStyleRulesSettingsRequestSchema,
+)
 from app.core.dependencies import (
     GraphAuthServiceDep,
     GraphCalendarServiceDep,
     LlmServiceDep,
     PipelineSettingsServiceDep,
     SchedulingServiceDep,
+    StyleRulesServiceDep,
     VectorStoreServiceDep,
 )
 from app.pipeline import run_pipeline, summarize_thread
 from app.pipeline.llm_client import LlmClientError
-from app.pipeline.prompt_builder import build_tone_instruction
+from app.pipeline.prompt_builder import build_style_rules_instruction, build_tone_instruction
+from app.pipeline.reply_revision import revise_reply
+from app.pipeline.style_learning import derive_style_rule
 from app.services.availability import CalendarServiceError
 from app.services.graph_auth_service import GraphAuthError
 from app.services.ics_calendar_service import IcsCalendarService
 from app.services.llm_service import LlmServiceError
-from app.services.pipeline_settings_service import DEFAULT_PROMPT_ID, SavedPromptNotFoundError
+from app.services.pipeline_settings_service import (
+    DEFAULT_PROMPT_ID,
+    PipelineSettingsStore,
+    SavedPromptNotFoundError,
+)
+from app.services.style_rules_service import StyleRuleNotFoundError, StyleRulesStore
 
 api_router = APIRouter()
+
+
+def _build_system_prompt(
+    pipeline_settings_service: PipelineSettingsStore, style_rules_service: StyleRulesStore
+) -> str:
+    """System prompt for reply generation: base prompt + tone + learned style rules."""
+    tone_instruction = build_tone_instruction(
+        pipeline_settings_service.get_tone(),
+        pipeline_settings_service.get_custom_tone_text(),
+    )
+    style_rules_instruction = build_style_rules_instruction(style_rules_service.active_rules())
+    return "\n\n".join(
+        part
+        for part in (
+            pipeline_settings_service.get_prompt(),
+            tone_instruction,
+            style_rules_instruction,
+        )
+        if part
+    )
 
 
 @api_router.get(
@@ -117,6 +154,7 @@ async def stream_email_suggestion(
     payload: EmailSuggestionRequestSchema,
     scheduling_service: SchedulingServiceDep,
     pipeline_settings_service: PipelineSettingsServiceDep,
+    style_rules_service: StyleRulesServiceDep,
 ) -> StreamingResponse:
     """Generate a reply suggestion, streaming each pipeline step as it completes.
 
@@ -124,19 +162,15 @@ async def stream_email_suggestion(
     pipeline is augmented with real availability, and the final `done` event
     carries a concrete meeting proposal.
 
-    The system prompt and whether the pipeline may ask a clarifying question
-    before answering come from the user-configurable pipeline settings.
+    The system prompt, tone and whether the pipeline may ask a clarifying question
+    before answering come from the user-configurable pipeline settings; style
+    rules learned from earlier user corrections are appended to the prompt.
     """
     augmentation = await scheduling_service.augment_with_availability(
         payload.email_content, payload.attendees
     )
 
-    base_prompt = pipeline_settings_service.get_prompt()
-    tone_instruction = build_tone_instruction(
-        pipeline_settings_service.get_tone(),
-        pipeline_settings_service.get_custom_tone_text(),
-    )
-    system_prompt = f"{base_prompt}\n\n{tone_instruction}" if tone_instruction else base_prompt
+    system_prompt = _build_system_prompt(pipeline_settings_service, style_rules_service)
 
     async def event_stream() -> AsyncIterator[str]:
         async for event in run_pipeline(
@@ -153,6 +187,38 @@ async def stream_email_suggestion(
             yield f"data: {event.model_dump_json(by_alias=True)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@api_router.post(
+    "/email/suggestion/revise",
+    response_model=ReviseReplyResponseSchema,
+    summary="Revise an already suggested reply according to user feedback",
+    responses={503: {"model": ErrorResponseSchema, "description": "LLM unavailable"}},
+    tags=["email"],
+    operation_id="postReplyRevision",
+)
+async def revise_email_suggestion(
+    payload: ReviseReplyRequestSchema,
+    pipeline_settings_service: PipelineSettingsServiceDep,
+    style_rules_service: StyleRulesServiceDep,
+) -> ReviseReplyResponseSchema:
+    """Rewrite the previous reply with a single LLM call, applying the feedback.
+
+    Uses the same system prompt as a fresh suggestion (base prompt, tone and
+    learned style rules) but skips the multi-step pipeline. The feedback applies
+    to this one reply only; it is not stored.
+    """
+    system_prompt = _build_system_prompt(pipeline_settings_service, style_rules_service)
+    try:
+        final_reply = await revise_reply(
+            system_prompt, payload.email_content, payload.previous_reply, payload.feedback
+        )
+    except LlmClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    return ReviseReplyResponseSchema(final_reply=final_reply)
 
 
 @api_router.get(
@@ -277,6 +343,105 @@ async def delete_saved_prompt(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Prompt nicht gefunden."
         ) from exc
+
+
+@api_router.get(
+    "/pipeline/style-rules",
+    response_model=StyleRulesSchema,
+    summary="List the style rules learned from user corrections",
+    tags=["pipeline"],
+    operation_id="getStyleRules",
+)
+async def get_style_rules(service: StyleRulesServiceDep) -> StyleRulesSchema:
+    return StyleRulesSchema(
+        enabled=service.is_enabled(),
+        rules=[StyleRuleSchema(id=r["id"], text=r["text"]) for r in service.list_rules()],
+    )
+
+
+@api_router.put(
+    "/pipeline/style-rules/settings",
+    response_model=StyleRulesSchema,
+    summary="Switch learning from user corrections on or off",
+    tags=["pipeline"],
+    operation_id="putStyleRulesSettings",
+)
+async def put_style_rules_settings(
+    payload: UpdateStyleRulesSettingsRequestSchema,
+    service: StyleRulesServiceDep,
+) -> StyleRulesSchema:
+    service.set_enabled(payload.enabled)
+    return await get_style_rules(service)
+
+
+@api_router.post(
+    "/pipeline/corrections",
+    response_model=CorrectionResponseSchema,
+    summary="Learn a style rule from a user correction of a suggested reply",
+    responses={
+        409: {"model": ErrorResponseSchema, "description": "Learning is switched off"},
+        503: {"model": ErrorResponseSchema, "description": "LLM unavailable"},
+    },
+    tags=["pipeline"],
+    operation_id="postCorrection",
+)
+async def post_correction(
+    payload: CreateCorrectionRequestSchema,
+    service: StyleRulesServiceDep,
+) -> CorrectionResponseSchema:
+    """Derive one short, general style rule from the correction and store it.
+
+    Only the rule text is stored, never the reply or the e-mail it came from.
+    """
+    if not service.is_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Lernen aus Korrekturen ist ausgeschaltet.",
+        )
+    try:
+        rule_text = await derive_style_rule(
+            payload.original_reply, payload.feedback, payload.corrected_reply
+        )
+    except LlmClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    entry = service.add_rule(rule_text) if rule_text else None
+    if entry is None:
+        return CorrectionResponseSchema(learned=False)
+    return CorrectionResponseSchema(
+        learned=True, rule=StyleRuleSchema(id=entry["id"], text=entry["text"])
+    )
+
+
+@api_router.delete(
+    "/pipeline/style-rules/{rule_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete one learned style rule",
+    responses={404: {"model": ErrorResponseSchema, "description": "Rule not found"}},
+    tags=["pipeline"],
+    operation_id="deleteStyleRule",
+)
+async def delete_style_rule(rule_id: str, service: StyleRulesServiceDep) -> None:
+    try:
+        service.delete_rule(rule_id)
+    except StyleRuleNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Regel nicht gefunden."
+        ) from exc
+
+
+@api_router.delete(
+    "/pipeline/style-rules",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete all learned style rules",
+    tags=["pipeline"],
+    operation_id="deleteAllStyleRules",
+)
+async def delete_all_style_rules(service: StyleRulesServiceDep) -> None:
+    service.clear()
 
 
 @api_router.post(

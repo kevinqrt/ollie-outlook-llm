@@ -6,6 +6,15 @@ from app.api.schemas.base_schema import BaseSchema
 from app.api.schemas.calendar_schema import MeetingProposalSchema
 
 
+class ClarificationNeededEvent(BaseSchema):
+    type: Literal["clarification_needed"] = "clarification_needed"
+    question: str = Field(description="Rückfrage an den Nutzer, bevor die Antwort erstellt wird.")
+    options: list[str] = Field(
+        default_factory=list,
+        description="Bis zu 3 vorgeschlagene Antworten; der Nutzer kann auch frei antworten.",
+    )
+
+
 class PlanReadyEvent(BaseSchema):
     type: Literal["plan_ready"] = "plan_ready"
     steps: list[str] = Field(description="Teilschritte, die das LLM für die Aufgabe geplant hat.")
@@ -39,6 +48,11 @@ class ErrorEvent(BaseSchema):
 
 
 PipelineEvent = Annotated[
-    PlanReadyEvent | StepStartedEvent | StepCompletedEvent | DoneEvent | ErrorEvent,
+    ClarificationNeededEvent
+    | PlanReadyEvent
+    | StepStartedEvent
+    | StepCompletedEvent
+    | DoneEvent
+    | ErrorEvent,
     Field(discriminator="type"),
 ]

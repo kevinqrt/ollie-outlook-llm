@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteCalendarIcsKnownData, DeleteCalendarIcsKnownErrors, DeleteCalendarIcsKnownResponses, DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, GetCalendarAuthLoginData, GetCalendarAuthLoginErrors, GetCalendarAuthLoginResponses, GetCalendarAuthStatusData, GetCalendarAuthStatusResponses, GetCalendarEventsData, GetCalendarEventsErrors, GetCalendarEventsResponses, GetCalendarIcsKnownData, GetCalendarIcsKnownErrors, GetCalendarIcsKnownResponses, GetCalendarIcsStatusData, GetCalendarIcsStatusErrors, GetCalendarIcsStatusResponses, GetHealthData, GetHealthResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostCalendarAuthCallbackData, PostCalendarAuthCallbackErrors, PostCalendarAuthCallbackResponses, PostCalendarIcsKnownData, PostCalendarIcsKnownErrors, PostCalendarIcsKnownResponses, PostCalendarIcsSelfData, PostCalendarIcsSelfErrors, PostCalendarIcsSelfResponses, PostCalendarMeetingTimesData, PostCalendarMeetingTimesErrors, PostCalendarMeetingTimesResponses, PostChatData, PostChatErrors, PostChatResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
+import type { DeleteCalendarIcsKnownData, DeleteCalendarIcsKnownErrors, DeleteCalendarIcsKnownResponses, DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, DeleteSavedPromptData, DeleteSavedPromptErrors, DeleteSavedPromptResponses, GetCalendarAuthLoginData, GetCalendarAuthLoginErrors, GetCalendarAuthLoginResponses, GetCalendarAuthStatusData, GetCalendarAuthStatusResponses, GetCalendarEventsData, GetCalendarEventsErrors, GetCalendarEventsResponses, GetCalendarIcsKnownData, GetCalendarIcsKnownErrors, GetCalendarIcsKnownResponses, GetCalendarIcsStatusData, GetCalendarIcsStatusErrors, GetCalendarIcsStatusResponses, GetHealthData, GetHealthResponses, GetPipelineSettingsData, GetPipelineSettingsResponses, GetSavedPromptsData, GetSavedPromptsResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostCalendarAuthCallbackData, PostCalendarAuthCallbackErrors, PostCalendarAuthCallbackResponses, PostCalendarIcsKnownData, PostCalendarIcsKnownErrors, PostCalendarIcsKnownResponses, PostCalendarIcsSelfData, PostCalendarIcsSelfErrors, PostCalendarIcsSelfResponses, PostCalendarMeetingTimesData, PostCalendarMeetingTimesErrors, PostCalendarMeetingTimesResponses, PostChatData, PostChatErrors, PostChatResponses, PostSavedPromptData, PostSavedPromptErrors, PostSavedPromptResponses, PutPipelineSettingsData, PutPipelineSettingsErrors, PutPipelineSettingsResponses, PutSavedPromptData, PutSavedPromptErrors, PutSavedPromptResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -50,9 +50,69 @@ export const postChat = <ThrowOnError extends boolean = false>(options: Options<
  * If the email contains a meeting request and the calendar is connected, the
  * pipeline is augmented with real availability, and the final `done` event
  * carries a concrete meeting proposal.
+ *
+ * The system prompt and whether the pipeline may ask a clarifying question
+ * before answering come from the user-configurable pipeline settings.
  */
 export const streamEmailSuggestion = <ThrowOnError extends boolean = false>(options: Options<StreamEmailSuggestionData, ThrowOnError, StreamEmailSuggestionResponse>) => (options.client ?? client).sse.post<StreamEmailSuggestionResponses, StreamEmailSuggestionErrors, ThrowOnError>({
     url: '/email/suggestion/stream',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get the current auto-reply pipeline settings
+ */
+export const getPipelineSettings = <ThrowOnError extends boolean = false>(options?: Options<GetPipelineSettingsData, ThrowOnError>) => (options?.client ?? client).get<GetPipelineSettingsResponses, unknown, ThrowOnError>({ url: '/pipeline/settings', ...options });
+
+/**
+ * Update the auto-reply pipeline settings (system prompt, clarifying questions)
+ */
+export const putPipelineSettings = <ThrowOnError extends boolean = false>(options: Options<PutPipelineSettingsData, ThrowOnError>) => (options.client ?? client).put<PutPipelineSettingsResponses, PutPipelineSettingsErrors, ThrowOnError>({
+    url: '/pipeline/settings',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List saved prompt templates
+ *
+ * List saved prompt templates, with the built-in default prompt always first.
+ *
+ * The default entry is synthesized here (not stored in "saved_prompts") so it can
+ * never be deleted or overwritten, but is always available to re-select - fixing
+ * the case where a user edits the prompt field and saves over the original default.
+ */
+export const getSavedPrompts = <ThrowOnError extends boolean = false>(options?: Options<GetSavedPromptsData, ThrowOnError>) => (options?.client ?? client).get<GetSavedPromptsResponses, unknown, ThrowOnError>({ url: '/pipeline/settings/prompts', ...options });
+
+/**
+ * Save a new prompt template
+ */
+export const postSavedPrompt = <ThrowOnError extends boolean = false>(options: Options<PostSavedPromptData, ThrowOnError>) => (options.client ?? client).post<PostSavedPromptResponses, PostSavedPromptErrors, ThrowOnError>({
+    url: '/pipeline/settings/prompts',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete a saved prompt template
+ */
+export const deleteSavedPrompt = <ThrowOnError extends boolean = false>(options: Options<DeleteSavedPromptData, ThrowOnError>) => (options.client ?? client).delete<DeleteSavedPromptResponses, DeleteSavedPromptErrors, ThrowOnError>({ url: '/pipeline/settings/prompts/{prompt_id}', ...options });
+
+/**
+ * Update a saved prompt template
+ */
+export const putSavedPrompt = <ThrowOnError extends boolean = false>(options: Options<PutSavedPromptData, ThrowOnError>) => (options.client ?? client).put<PutSavedPromptResponses, PutSavedPromptErrors, ThrowOnError>({
+    url: '/pipeline/settings/prompts/{prompt_id}',
     ...options,
     headers: {
         'Content-Type': 'application/json',

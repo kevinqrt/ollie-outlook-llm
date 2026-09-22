@@ -131,6 +131,16 @@ export type ChatResponseSchema = {
 };
 
 /**
+ * CreateSavedPromptRequestSchema
+ */
+export type CreateSavedPromptRequestSchema = {
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
  * EmailSuggestionRequestSchema
  */
 export type EmailSuggestionRequestSchema = {
@@ -146,6 +156,12 @@ export type EmailSuggestionRequestSchema = {
      * Email addresses of the other recipients (To/Cc), used to check everyone's calendar availability for meeting-time suggestions.
      */
     attendees?: Array<string>;
+    /**
+     * Clarificationanswer
+     *
+     * The user's answer to a previous 'clarification_needed' pipeline event, if any. Re-running with this set skips the clarification check and generates the reply directly, using the answer as extra context.
+     */
+    clarificationAnswer?: string | null;
 };
 
 /**
@@ -365,6 +381,54 @@ export type MeetingTimeSuggestionSchema = {
 };
 
 /**
+ * PipelineSettingsSchema
+ */
+export type PipelineSettingsSchema = {
+    /**
+     * Prompt
+     *
+     * System-Prompt, der die Antwort-Pipeline steuert.
+     */
+    prompt: string;
+    /**
+     * Allowclarifyingquestions
+     *
+     * Ob die Pipeline vor der Antwort-Generierung Rückfragen an den Nutzer stellen darf, statt Fehlendes zu erfinden oder zu übergehen.
+     */
+    allowClarifyingQuestions?: boolean;
+};
+
+/**
+ * SavedPromptListSchema
+ */
+export type SavedPromptListSchema = {
+    /**
+     * Prompts
+     */
+    prompts: Array<SavedPromptSchema>;
+};
+
+/**
+ * SavedPromptSchema
+ */
+export type SavedPromptSchema = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Isdefault
+     *
+     * Ob dies der eingebaute Standard-Prompt ist - immer vorhanden, nicht bearbeitbar oder löschbar, aber jederzeit erneut auswählbar.
+     */
+    isDefault?: boolean;
+};
+
+/**
  * SetKnownIcsUrlRequestSchema
  */
 export type SetKnownIcsUrlRequestSchema = {
@@ -388,6 +452,30 @@ export type SetSelfIcsUrlRequestSchema = {
      * Published Outlook calendar ICS feed URL (Outlook web -> Settings -> Calendar -> Shared calendars -> Publish a calendar).
      */
     url: string;
+};
+
+/**
+ * UpdatePipelineSettingsRequestSchema
+ */
+export type UpdatePipelineSettingsRequestSchema = {
+    /**
+     * Prompt
+     */
+    prompt: string;
+    /**
+     * Allowclarifyingquestions
+     */
+    allowClarifyingQuestions?: boolean;
+};
+
+/**
+ * UpdateSavedPromptRequestSchema
+ */
+export type UpdateSavedPromptRequestSchema = {
+    /**
+     * Text
+     */
+    text: string;
 };
 
 /**
@@ -487,6 +575,156 @@ export type StreamEmailSuggestionResponses = {
 };
 
 export type StreamEmailSuggestionResponse = StreamEmailSuggestionResponses[keyof StreamEmailSuggestionResponses];
+
+export type GetPipelineSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/pipeline/settings';
+};
+
+export type GetPipelineSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: PipelineSettingsSchema;
+};
+
+export type GetPipelineSettingsResponse = GetPipelineSettingsResponses[keyof GetPipelineSettingsResponses];
+
+export type PutPipelineSettingsData = {
+    body: UpdatePipelineSettingsRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/pipeline/settings';
+};
+
+export type PutPipelineSettingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PutPipelineSettingsError = PutPipelineSettingsErrors[keyof PutPipelineSettingsErrors];
+
+export type PutPipelineSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: PipelineSettingsSchema;
+};
+
+export type PutPipelineSettingsResponse = PutPipelineSettingsResponses[keyof PutPipelineSettingsResponses];
+
+export type GetSavedPromptsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/pipeline/settings/prompts';
+};
+
+export type GetSavedPromptsResponses = {
+    /**
+     * Successful Response
+     */
+    200: SavedPromptListSchema;
+};
+
+export type GetSavedPromptsResponse = GetSavedPromptsResponses[keyof GetSavedPromptsResponses];
+
+export type PostSavedPromptData = {
+    body: CreateSavedPromptRequestSchema;
+    path?: never;
+    query?: never;
+    url: '/pipeline/settings/prompts';
+};
+
+export type PostSavedPromptErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PostSavedPromptError = PostSavedPromptErrors[keyof PostSavedPromptErrors];
+
+export type PostSavedPromptResponses = {
+    /**
+     * Successful Response
+     */
+    200: SavedPromptSchema;
+};
+
+export type PostSavedPromptResponse = PostSavedPromptResponses[keyof PostSavedPromptResponses];
+
+export type DeleteSavedPromptData = {
+    body?: never;
+    path: {
+        /**
+         * Prompt Id
+         */
+        prompt_id: string;
+    };
+    query?: never;
+    url: '/pipeline/settings/prompts/{prompt_id}';
+};
+
+export type DeleteSavedPromptErrors = {
+    /**
+     * Prompt not found
+     */
+    404: ErrorResponseSchema;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteSavedPromptError = DeleteSavedPromptErrors[keyof DeleteSavedPromptErrors];
+
+export type DeleteSavedPromptResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteSavedPromptResponse = DeleteSavedPromptResponses[keyof DeleteSavedPromptResponses];
+
+export type PutSavedPromptData = {
+    body: UpdateSavedPromptRequestSchema;
+    path: {
+        /**
+         * Prompt Id
+         */
+        prompt_id: string;
+    };
+    query?: never;
+    url: '/pipeline/settings/prompts/{prompt_id}';
+};
+
+export type PutSavedPromptErrors = {
+    /**
+     * Prompt not found
+     */
+    404: ErrorResponseSchema;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PutSavedPromptError = PutSavedPromptErrors[keyof PutSavedPromptErrors];
+
+export type PutSavedPromptResponses = {
+    /**
+     * Successful Response
+     */
+    200: SavedPromptSchema;
+};
+
+export type PutSavedPromptResponse = PutSavedPromptResponses[keyof PutSavedPromptResponses];
 
 export type UploadPdfKnowledgePdfPostData = {
     body: BodyUploadPdfKnowledgePdfPost;

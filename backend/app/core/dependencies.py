@@ -4,11 +4,13 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.core.config import settings
+from app.pipeline.prompt_builder import DEFAULT_SYSTEM_PROMPT
 from app.services.calendar_mock_service import MockCalendarService, MockGraphAuthService
 from app.services.graph_auth_service import GraphAuthService
 from app.services.graph_calendar_service import GraphCalendarService
 from app.services.ics_calendar_service import IcsCalendarService, IcsCalendarStore
 from app.services.llm_service import LlmService
+from app.services.pipeline_settings_service import PipelineSettingsStore
 from app.services.scheduling_service import SchedulingService
 from app.services.vector_store_service import VectorStoreService
 
@@ -26,12 +28,16 @@ class ServiceContainer:
         self.graph_auth_service: GraphAuthService | None = None
         self.graph_calendar_service: CalendarService | None = None
         self.scheduling_service: SchedulingService | None = None
+        self.pipeline_settings_service: PipelineSettingsStore | None = None
 
     def init_services(self) -> None:
         """Initialize all global services."""
         logger.info("Initializing application services in container...")
         self.vector_store = VectorStoreService()
         self.llm_service = LlmService(vector_store=self.vector_store)
+        self.pipeline_settings_service = PipelineSettingsStore(
+            settings.pipeline_settings_path, DEFAULT_SYSTEM_PROMPT
+        )
         if settings.calendar_mock_mode:
             logger.warning(
                 "CALENDAR_MOCK_MODE is active - calendar endpoints/MCP tools return fake data."
@@ -60,6 +66,7 @@ class ServiceContainer:
         self.graph_auth_service = None
         self.graph_calendar_service = None
         self.scheduling_service = None
+        self.pipeline_settings_service = None
 
 
 # Global instance of the container
@@ -102,9 +109,19 @@ def get_scheduling_service() -> SchedulingService:
     return container.scheduling_service
 
 
+def get_pipeline_settings_service() -> PipelineSettingsStore:
+    """Dependency to retrieve the pipeline settings store."""
+    if container.pipeline_settings_service is None:
+        raise RuntimeError("PipelineSettingsStore is not initialized.")
+    return container.pipeline_settings_service
+
+
 # Annotated Dependency Aliases
 VectorStoreServiceDep = Annotated[VectorStoreService, Depends(get_vector_store_service)]
 LlmServiceDep = Annotated[LlmService, Depends(get_llm_service)]
 GraphAuthServiceDep = Annotated[GraphAuthService, Depends(get_graph_auth_service)]
 GraphCalendarServiceDep = Annotated[CalendarService, Depends(get_graph_calendar_service)]
 SchedulingServiceDep = Annotated[SchedulingService, Depends(get_scheduling_service)]
+PipelineSettingsServiceDep = Annotated[
+    PipelineSettingsStore, Depends(get_pipeline_settings_service)
+]

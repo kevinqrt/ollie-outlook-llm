@@ -16,6 +16,18 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 3000,
     https: true as any,
+    proxy: {
+      // Die Task-Pane läuft zwingend über HTTPS (Office-Add-in-Vorgabe), das
+      // Backend lokal nur über HTTP - ein direkter Browser-Fetch auf die
+      // HTTP-URL würde als Mixed Content geblockt (TypeError: Failed to
+      // fetch, ohne weitere Erklärung). Dieser Proxy läuft serverseitig in
+      // Vite, nicht im Browser, und ist davon nicht betroffen.
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
   build: {
     outDir: 'dist',

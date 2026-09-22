@@ -19,3 +19,9 @@ class EmailSuggestionRequestSchema(BaseSchema):
         "everyone's calendar availability for meeting-time suggestions.",
         examples=[["alice@contoso.com"]],
     )
+    clarification_answer: str | None = Field(
+        default=None,
+        description="The user's answer to a previous 'clarification_needed' pipeline event, "
+        "if any. Re-running with this set skips the clarification check and generates the "
+        "reply directly, using the answer as extra context.",
+    )

@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     calendar_backend: Literal["ics", "graph"] = "ics"
     ics_store_path: str = "./ics_calendars.json"
 
+    pipeline_settings_path: str = "./pipeline_settings.json"
+
 
 @lru_cache
 def get_settings() -> Settings:

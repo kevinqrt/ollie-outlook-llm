@@ -216,3 +216,125 @@ h1 {
   flex-shrink: 0;
   width: 1.2em;
 }
+
+.assistant-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.icon-button {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background-color: #f3f2f1;
+}
+
+.pipeline-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.pipeline-settings-header {
+  display: flex;
+  margin-bottom: 4px;
+  margin-left: -8px;
+}
+
+.pipeline-settings-field-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pipeline-settings-textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.pipeline-settings-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.clarification-block {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #fff8ea;
+  border: 1px solid #f2d98d;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.clarification-question {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.clarification-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.clarification-option-button {
+  text-align: left;
+  padding: 8px 10px;
+  background: white;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.clarification-option-button:hover:not(:disabled) {
+  background: #f3f9ff;
+}
+
+.clarification-option-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.clarification-custom-row {
+  display: flex;
+  gap: 6px;
+}
+
+.clarification-custom-row input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+}

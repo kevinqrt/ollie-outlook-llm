@@ -14,14 +14,31 @@ const OWA_COMPOSE_BASE_URL =
   'https://outlook.office.com/calendar/0/deeplink/compose';
 
 function extractErrorMessage(
-  error: { detail?: string | ValidationError[] } | null | undefined
+  error: { detail?: string | ValidationError[] } | null | undefined,
+  status?: number
 ): string {
-  if (!error) return 'Ein unbekannter Fehler ist aufgetreten.';
-  if (typeof error.detail === 'string') return error.detail;
-  if (Array.isArray(error.detail)) {
-    return error.detail.map((d: ValidationError) => d.msg).join(', ');
+  if (error) {
+    if (typeof error.detail === 'string') return error.detail;
+    if (Array.isArray(error.detail)) {
+      return error.detail.map((d: ValidationError) => d.msg).join(', ');
+    }
+    // A network/fetch failure (backend unreachable, CORS, ...) surfaces here as
+    // a raw Error instance rather than a parsed API error body.
+    if (error instanceof Error) return error.message;
+    // DOMException (e.g. AbortError) and similar browser error objects don't
+    // extend Error but still carry a readable `message`.
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message) return message;
+    // A non-2xx response with an empty body (e.g. the dev proxy answering for
+    // an unreachable backend) is normalized by the SDK into a plain "{}" - not
+    // useful on its own, so fall through to the status-based message below
+    // instead of showing that literal "{}" to the user.
+    const stringified = JSON.stringify(error);
+    if (stringified && stringified !== '{}') return stringified;
   }
-  return JSON.stringify(error);
+  return status
+    ? `Server nicht erreichbar oder Fehler (HTTP ${status}). Läuft das Backend?`
+    : 'Server nicht erreichbar. Läuft das Backend?';
 }
 
 /** Whether the signed-in user has set their own ICS calendar link. */
@@ -40,7 +57,8 @@ export async function setSelfIcsUrl(url: string): Promise<void> {
   if (response.error) {
     throw new Error(
       extractErrorMessage(
-        response.error as { detail?: string | ValidationError[] }
+        response.error as { detail?: string | ValidationError[] },
+        response.response?.status
       )
     );
   }
@@ -59,7 +77,8 @@ export async function addKnownCalendar(
   if (response.error) {
     throw new Error(
       extractErrorMessage(
-        response.error as { detail?: string | ValidationError[] }
+        response.error as { detail?: string | ValidationError[] },
+        response.response?.status
       )
     );
   }
@@ -73,7 +92,8 @@ export async function removeKnownCalendar(
   if (response.error) {
     throw new Error(
       extractErrorMessage(
-        response.error as { detail?: string | ValidationError[] }
+        response.error as { detail?: string | ValidationError[] },
+        response.response?.status
       )
     );
   }

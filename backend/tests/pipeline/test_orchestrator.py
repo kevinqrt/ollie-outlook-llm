@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
@@ -63,9 +64,9 @@ def patched_pipeline(fake_model: FakeMessagesListChatModel):
         yield Mocks(fake_rag_client, create_session, delete_session, query_session)
 
 
-def _run(email_text: str) -> list[PipelineEvent]:
+def _run(email_text: str, **kwargs: Any) -> list[PipelineEvent]:
     async def _collect() -> list[PipelineEvent]:
-        return [event async for event in orchestrator.run_pipeline(email_text)]
+        return [event async for event in orchestrator.run_pipeline(email_text, **kwargs)]
 
     return asyncio.run(_collect())
 
@@ -197,3 +198,62 @@ def test_error_mid_pipeline_yields_error_event_and_still_cleans_up_session():
     assert types == ["plan_ready", "step_started", "error"]
     assert events[-1].detail == "Simulated backend failure"
     mocks.delete_session.assert_awaited_once_with(mocks.fake_rag_client, "session-123")
+
+
+def test_clarification_check_skipped_by_default():
+    # allow_clarifying_questions defaults to False, so the pipeline must go
+    # straight to planning without an extra clarification-check call.
+    fake_model = _FakeChatModel(
+        responses=[
+            AIMessage(content='["Antwort formulieren"]'),
+            AIMessage(content="Danke fuer die Erinnerung. Mfg"),
+        ]
+    )
+
+    with patched_pipeline(fake_model) as mocks:
+        events = _run("Nur zur Erinnerung: bitte das Formular ausfuellen.")
+
+    assert [e.type for e in events] == ["plan_ready", "step_started", "step_completed", "done"]
+    mocks.create_session.assert_awaited_once()
+
+
+def test_clarification_needed_stops_pipeline_before_planning():
+    fake_model = _FakeChatModel(
+        responses=[
+            AIMessage(
+                content=(
+                    '{"needs_clarification": true, "question": '
+                    '"Sollen wir den Termin auf 14 Uhr oder 15 Uhr legen?", '
+                    '"options": ["14 Uhr", "15 Uhr", "Beide gehen nicht"]}'
+                )
+            ),
+        ]
+    )
+
+    with patched_pipeline(fake_model) as mocks:
+        events = _run("Wann passt es dir diese Woche?", allow_clarifying_questions=True)
+
+    assert [e.type for e in events] == ["clarification_needed"]
+    assert events[0].question == "Sollen wir den Termin auf 14 Uhr oder 15 Uhr legen?"
+    assert events[0].options == ["14 Uhr", "15 Uhr", "Beide gehen nicht"]
+    mocks.create_session.assert_not_awaited()
+    mocks.delete_session.assert_not_awaited()
+
+
+def test_clarification_answer_skips_check_and_proceeds():
+    fake_model = _FakeChatModel(
+        responses=[
+            AIMessage(content='["Antwort formulieren"]'),
+            AIMessage(content="Passt, 14 Uhr. Mfg"),
+        ]
+    )
+
+    with patched_pipeline(fake_model) as mocks:
+        events = _run(
+            "Wann passt es dir diese Woche?",
+            allow_clarifying_questions=True,
+            clarification_answer="14 Uhr",
+        )
+
+    assert [e.type for e in events] == ["plan_ready", "step_started", "step_completed", "done"]
+    mocks.create_session.assert_awaited_once()

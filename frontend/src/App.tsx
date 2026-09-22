@@ -1,15 +1,24 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { MeetingProposalSchema } from './api/generated';
-import type { PipelineEvent } from './api/pipelineEvents';
+import type {
+  ClarificationNeededEvent,
+  PipelineEvent,
+} from './api/pipelineEvents';
 import { ChatAssistant } from './components/ChatAssistant';
 import { KnowledgeBase } from './components/KnowledgeBase';
+import { PromptLibrary } from './components/PromptLibrary';
 import { useNotification } from './context/NotificationContext';
 import { openCalendarComposeWindow } from './services/calendarWorkflow';
 import { officeService } from './services/officeService';
+import {
+  fetchPipelineSettings,
+  savePipelineSettings,
+} from './services/pipelineSettingsWorkflow';
 import { runReplyWorkflow } from './services/replyWorkflow';
 import './App.css';
 
 type Tab = 'assistant' | 'chat' | 'knowledge';
+type AssistantView = 'main' | 'settings' | 'library';
 type StepStatus = 'pending' | 'running' | 'done';
 
 type PipelineStep = {
@@ -32,6 +41,15 @@ function App() {
     useState<MeetingProposalSchema | null>(null);
   const [isPlanning, setIsPlanning] = useState(false);
   const [steps, setSteps] = useState<PipelineStep[]>([]);
+  const [clarification, setClarification] =
+    useState<ClarificationNeededEvent | null>(null);
+  const [clarificationCustomAnswer, setClarificationCustomAnswer] =
+    useState('');
+  const [assistantView, setAssistantView] = useState<AssistantView>('main');
+  const [promptDraft, setPromptDraft] = useState('');
+  const [allowClarifyingQuestions, setAllowClarifyingQuestions] =
+    useState(false);
+  const [savingPipelineSettings, setSavingPipelineSettings] = useState(false);
   const { notify, removeNotification } = useNotification();
   const loadingNotificationId = useRef<string | null>(null);
 
@@ -44,6 +62,44 @@ function App() {
       console.warn('Office JS not found, running in browser mode.');
     }
   }, []);
+
+  useEffect(() => {
+    fetchPipelineSettings()
+      .then((s) => {
+        setPromptDraft(s.prompt);
+        setAllowClarifyingQuestions(s.allowClarifyingQuestions ?? false);
+      })
+      .catch((error) => {
+        console.error(
+          'Pipeline-Einstellungen konnten nicht geladen werden:',
+          error
+        );
+      });
+  }, []);
+
+  async function handleSavePipelineSettings() {
+    if (!promptDraft.trim()) return;
+    setSavingPipelineSettings(true);
+    try {
+      const saved = await savePipelineSettings(
+        promptDraft,
+        allowClarifyingQuestions
+      );
+      setPromptDraft(saved.prompt);
+      setAllowClarifyingQuestions(saved.allowClarifyingQuestions ?? false);
+      setAssistantView('main');
+      notify('Einstellungen gespeichert.', 'success');
+    } catch (error) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : 'Einstellungen konnten nicht gespeichert werden.';
+      notify(msg, 'error');
+      console.error('Save pipeline settings error:', error);
+    } finally {
+      setSavingPipelineSettings(false);
+    }
+  }
 
   function handleOpenAppointment(proposal: MeetingProposalSchema) {
     try {
@@ -89,10 +145,11 @@ function App() {
     }
   }
 
-  function handleAction() {
+  function handleAction(clarificationAnswer?: string) {
     setSteps([]);
     setIsPlanning(true);
     setMeetingProposal(null);
+    setClarification(null);
 
     startTransition(async () => {
       if (loadingNotificationId.current) {
@@ -106,12 +163,22 @@ function App() {
       );
 
       try {
-        const result = await runReplyWorkflow(handleProgress);
-        setMeetingProposal(result.meetingProposal ?? null);
+        const result = await runReplyWorkflow(
+          handleProgress,
+          clarificationAnswer
+        );
+
         if (loadingNotificationId.current) {
           removeNotification(loadingNotificationId.current);
           loadingNotificationId.current = null;
         }
+
+        if (result.clarification) {
+          setClarification(result.clarification);
+          return;
+        }
+
+        setMeetingProposal(result.meetingProposal ?? null);
         notify('Vorschlag erfolgreich eingefügt!', 'success');
       } catch (error) {
         console.error('Workflow error:', error);
@@ -136,6 +203,17 @@ function App() {
         setIsPlanning(false);
       }
     });
+  }
+
+  function handleClarificationAnswer(answer: string) {
+    if (!answer.trim() || isPending) return;
+    setClarificationCustomAnswer('');
+    handleAction(answer.trim());
+  }
+
+  function handleSelectSavedPrompt(text: string) {
+    setPromptDraft(text);
+    setAssistantView('settings');
   }
 
   return (
@@ -177,61 +255,185 @@ function App() {
       </nav>
 
       <section className="content-area">
-        {activeTab === 'assistant' &&
-          (isCompose ? (
-            <div className="action-card">
-              <p className="description">
-                Bereit für eine intelligente Antwort.
-              </p>
+        {activeTab === 'assistant' && assistantView === 'main' && (
+          <>
+            <div className="assistant-toolbar">
               <button
-                className="primary-button"
                 type="button"
-                disabled={isPending}
-                onClick={handleAction}
+                className="icon-button"
+                aria-label="Pipeline-Einstellungen"
+                onClick={() => setAssistantView('settings')}
               >
-                {isPending ? 'Generiere...' : 'Antwort einfügen'}
+                ⚙️
               </button>
+            </div>
 
-              {meetingProposal && (
+            {isCompose ? (
+              <div className="action-card">
+                <p className="description">
+                  Bereit für eine intelligente Antwort.
+                </p>
                 <button
-                  className="secondary-button"
+                  className="primary-button"
                   type="button"
-                  onClick={() => handleOpenAppointment(meetingProposal)}
+                  disabled={isPending}
+                  onClick={() => handleAction()}
                 >
-                  📅 Termin im Kalender öffnen
+                  {isPending ? 'Generiere...' : 'Antwort einfügen'}
                 </button>
-              )}
 
-              {isPending && isPlanning && (
-                <p className="description">Plane Vorgehen...</p>
-              )}
+                {meetingProposal && (
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => handleOpenAppointment(meetingProposal)}
+                  >
+                    📅 Termin im Kalender öffnen
+                  </button>
+                )}
 
-              {steps.length > 0 && (
-                <ul className="pipeline-steps">
-                  {steps.map((step) => (
-                    <li
-                      key={step.index}
-                      className="pipeline-step"
-                      data-status={step.status}
-                    >
-                      <span className="pipeline-step-icon">
-                        {STEP_ICON[step.status]}
-                      </span>
-                      <span>{step.label}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                {clarification && (
+                  <div className="clarification-block">
+                    <p className="clarification-question">
+                      {clarification.question}
+                    </p>
+                    {clarification.options.length > 0 && (
+                      <div className="clarification-options">
+                        {clarification.options.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            className="clarification-option-button"
+                            disabled={isPending}
+                            onClick={() => handleClarificationAnswer(option)}
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="clarification-custom-row">
+                      <input
+                        type="text"
+                        placeholder="Sonstiges..."
+                        value={clarificationCustomAnswer}
+                        onChange={(e) =>
+                          setClarificationCustomAnswer(e.target.value)
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleClarificationAnswer(
+                              clarificationCustomAnswer
+                            );
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="text-button"
+                        disabled={
+                          isPending || !clarificationCustomAnswer.trim()
+                        }
+                        onClick={() =>
+                          handleClarificationAnswer(clarificationCustomAnswer)
+                        }
+                      >
+                        Senden
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {isPending && isPlanning && (
+                  <p className="description">Plane Vorgehen...</p>
+                )}
+
+                {steps.length > 0 && (
+                  <ul className="pipeline-steps">
+                    {steps.map((step) => (
+                      <li
+                        key={step.index}
+                        className="pipeline-step"
+                        data-status={step.status}
+                      >
+                        <span className="pipeline-step-icon">
+                          {STEP_ICON[step.status]}
+                        </span>
+                        <span>{step.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : (
+              <div className="info-card">
+                <div className="icon-info">ℹ</div>
+                <p>
+                  Um die KI zu nutzen, klicken Sie bitte erst auf{' '}
+                  <strong>Antworten</strong>.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'assistant' && assistantView === 'settings' && (
+          <div className="pipeline-settings-panel">
+            <div className="pipeline-settings-header">
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setAssistantView('main')}
+              >
+                ← Zurück
+              </button>
             </div>
-          ) : (
-            <div className="info-card">
-              <div className="icon-info">ℹ</div>
-              <p>
-                Um die KI zu nutzen, klicken Sie bitte erst auf{' '}
-                <strong>Antworten</strong>.
-              </p>
-            </div>
-          ))}
+            <label
+              className="pipeline-settings-field-label"
+              htmlFor="pipeline-prompt"
+            >
+              Prompt:
+            </label>
+            <textarea
+              id="pipeline-prompt"
+              className="pipeline-settings-textarea"
+              rows={10}
+              value={promptDraft}
+              onChange={(e) => setPromptDraft(e.target.value)}
+            />
+            <label className="pipeline-settings-toggle-row">
+              <input
+                type="checkbox"
+                checked={allowClarifyingQuestions}
+                onChange={(e) => setAllowClarifyingQuestions(e.target.checked)}
+              />
+              Rückfragen erlauben
+            </label>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setAssistantView('library')}
+            >
+              Prompts verwalten
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleSavePipelineSettings}
+              disabled={savingPipelineSettings || !promptDraft.trim()}
+            >
+              {savingPipelineSettings ? 'Speichere...' : 'Speichern'}
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'assistant' && assistantView === 'library' && (
+          <PromptLibrary
+            onSelect={handleSelectSavedPrompt}
+            onBack={() => setAssistantView('settings')}
+          />
+        )}
 
         {activeTab === 'chat' && <ChatAssistant />}
 

@@ -27,10 +27,19 @@ from app.api.schemas.knowledge_schema import (
     KnowledgeUploadResponseSchema,
 )
 from app.api.schemas.pipeline_schema import DoneEvent
+from app.api.schemas.pipeline_settings_schema import (
+    CreateSavedPromptRequestSchema,
+    PipelineSettingsSchema,
+    SavedPromptListSchema,
+    SavedPromptSchema,
+    UpdatePipelineSettingsRequestSchema,
+    UpdateSavedPromptRequestSchema,
+)
 from app.core.dependencies import (
     GraphAuthServiceDep,
     GraphCalendarServiceDep,
     LlmServiceDep,
+    PipelineSettingsServiceDep,
     SchedulingServiceDep,
     VectorStoreServiceDep,
 )
@@ -39,6 +48,7 @@ from app.services.availability import CalendarServiceError
 from app.services.graph_auth_service import GraphAuthError
 from app.services.ics_calendar_service import IcsCalendarService
 from app.services.llm_service import LlmServiceError
+from app.services.pipeline_settings_service import DEFAULT_PROMPT_ID, SavedPromptNotFoundError
 
 api_router = APIRouter()
 
@@ -99,19 +109,29 @@ async def post_chat(
 async def stream_email_suggestion(
     payload: EmailSuggestionRequestSchema,
     scheduling_service: SchedulingServiceDep,
+    pipeline_settings_service: PipelineSettingsServiceDep,
 ) -> StreamingResponse:
     """Generate a reply suggestion, streaming each pipeline step as it completes.
 
     If the email contains a meeting request and the calendar is connected, the
     pipeline is augmented with real availability, and the final `done` event
     carries a concrete meeting proposal.
+
+    The system prompt and whether the pipeline may ask a clarifying question
+    before answering come from the user-configurable pipeline settings.
     """
     augmentation = await scheduling_service.augment_with_availability(
         payload.email_content, payload.attendees
     )
 
     async def event_stream() -> AsyncIterator[str]:
-        async for event in run_pipeline(payload.email_content, extra_context=augmentation.context):
+        async for event in run_pipeline(
+            payload.email_content,
+            extra_context=augmentation.context,
+            system_prompt=pipeline_settings_service.get_prompt(),
+            allow_clarifying_questions=pipeline_settings_service.get_allow_clarifying_questions(),
+            clarification_answer=payload.clarification_answer,
+        ):
             if isinstance(event, DoneEvent):
                 event = DoneEvent(
                     final_reply=event.final_reply, meeting_proposal=augmentation.proposal
@@ -119,6 +139,123 @@ async def stream_email_suggestion(
             yield f"data: {event.model_dump_json(by_alias=True)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@api_router.get(
+    "/pipeline/settings",
+    response_model=PipelineSettingsSchema,
+    summary="Get the current auto-reply pipeline settings",
+    tags=["pipeline"],
+    operation_id="getPipelineSettings",
+)
+async def get_pipeline_settings(
+    service: PipelineSettingsServiceDep,
+) -> PipelineSettingsSchema:
+    return PipelineSettingsSchema(
+        prompt=service.get_prompt(),
+        allow_clarifying_questions=service.get_allow_clarifying_questions(),
+    )
+
+
+@api_router.put(
+    "/pipeline/settings",
+    response_model=PipelineSettingsSchema,
+    summary="Update the auto-reply pipeline settings (system prompt, clarifying questions)",
+    tags=["pipeline"],
+    operation_id="putPipelineSettings",
+)
+async def put_pipeline_settings(
+    payload: UpdatePipelineSettingsRequestSchema,
+    service: PipelineSettingsServiceDep,
+) -> PipelineSettingsSchema:
+    service.update(
+        prompt=payload.prompt, allow_clarifying_questions=payload.allow_clarifying_questions
+    )
+    return PipelineSettingsSchema(
+        prompt=service.get_prompt(),
+        allow_clarifying_questions=service.get_allow_clarifying_questions(),
+    )
+
+
+@api_router.get(
+    "/pipeline/settings/prompts",
+    response_model=SavedPromptListSchema,
+    summary="List saved prompt templates",
+    tags=["pipeline"],
+    operation_id="getSavedPrompts",
+)
+async def get_saved_prompts(service: PipelineSettingsServiceDep) -> SavedPromptListSchema:
+    """List saved prompt templates, with the built-in default prompt always first.
+
+    The default entry is synthesized here (not stored in "saved_prompts") so it can
+    never be deleted or overwritten, but is always available to re-select - fixing
+    the case where a user edits the prompt field and saves over the original default.
+    """
+    default_entry = SavedPromptSchema(
+        id=DEFAULT_PROMPT_ID, text=service.get_default_prompt(), is_default=True
+    )
+    saved_entries = [
+        SavedPromptSchema(id=entry["id"], text=entry["text"])
+        for entry in service.list_saved_prompts()
+    ]
+    return SavedPromptListSchema(prompts=[default_entry, *saved_entries])
+
+
+@api_router.post(
+    "/pipeline/settings/prompts",
+    response_model=SavedPromptSchema,
+    summary="Save a new prompt template",
+    tags=["pipeline"],
+    operation_id="postSavedPrompt",
+)
+async def post_saved_prompt(
+    payload: CreateSavedPromptRequestSchema,
+    service: PipelineSettingsServiceDep,
+) -> SavedPromptSchema:
+    entry = service.add_saved_prompt(payload.text)
+    return SavedPromptSchema(id=entry["id"], text=entry["text"])
+
+
+@api_router.put(
+    "/pipeline/settings/prompts/{prompt_id}",
+    response_model=SavedPromptSchema,
+    summary="Update a saved prompt template",
+    responses={404: {"model": ErrorResponseSchema, "description": "Prompt not found"}},
+    tags=["pipeline"],
+    operation_id="putSavedPrompt",
+)
+async def put_saved_prompt(
+    prompt_id: str,
+    payload: UpdateSavedPromptRequestSchema,
+    service: PipelineSettingsServiceDep,
+) -> SavedPromptSchema:
+    try:
+        entry = service.update_saved_prompt(prompt_id, payload.text)
+        return SavedPromptSchema(id=entry["id"], text=entry["text"])
+    except SavedPromptNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Prompt nicht gefunden."
+        ) from exc
+
+
+@api_router.delete(
+    "/pipeline/settings/prompts/{prompt_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a saved prompt template",
+    responses={404: {"model": ErrorResponseSchema, "description": "Prompt not found"}},
+    tags=["pipeline"],
+    operation_id="deleteSavedPrompt",
+)
+async def delete_saved_prompt(
+    prompt_id: str,
+    service: PipelineSettingsServiceDep,
+) -> None:
+    try:
+        service.delete_saved_prompt(prompt_id)
+    except SavedPromptNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Prompt nicht gefunden."
+        ) from exc
 
 
 @api_router.post(

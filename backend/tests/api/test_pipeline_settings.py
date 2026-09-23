@@ -9,6 +9,8 @@ def test_get_settings_returns_default_prompt_initially(client: TestClient) -> No
     body = response.json()
     assert body["prompt"]
     assert body["allowClarifyingQuestions"] is False
+    assert body["tone"] == "friendly"
+    assert body["customToneText"] is None
 
 
 def test_put_settings_persists_and_is_returned_by_get(client: TestClient) -> None:
@@ -20,13 +22,50 @@ def test_put_settings_persists_and_is_returned_by_get(client: TestClient) -> Non
     assert put_response.json() == {
         "prompt": "Antworte immer auf Englisch.",
         "allowClarifyingQuestions": True,
+        "tone": "friendly",
+        "customToneText": None,
     }
 
     get_response = client.get("/pipeline/settings")
     assert get_response.json() == {
         "prompt": "Antworte immer auf Englisch.",
         "allowClarifyingQuestions": True,
+        "tone": "friendly",
+        "customToneText": None,
     }
+
+
+def test_put_settings_persists_custom_tone(client: TestClient) -> None:
+    put_response = client.put(
+        "/pipeline/settings",
+        json={
+            "prompt": "Standard-Prompt",
+            "allowClarifyingQuestions": False,
+            "tone": "custom",
+            "customToneText": "sehr knapp und direkt",
+        },
+    )
+    assert put_response.status_code == status.HTTP_200_OK
+    assert put_response.json()["tone"] == "custom"
+    assert put_response.json()["customToneText"] == "sehr knapp und direkt"
+
+    get_response = client.get("/pipeline/settings")
+    assert get_response.json()["tone"] == "custom"
+    assert get_response.json()["customToneText"] == "sehr knapp und direkt"
+
+
+def test_put_settings_rejects_custom_tone_without_text(client: TestClient) -> None:
+    response = client.put(
+        "/pipeline/settings",
+        json={
+            "prompt": "Standard-Prompt",
+            "allowClarifyingQuestions": False,
+            "tone": "custom",
+            "customToneText": "",
+        },
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 def test_saved_prompts_list_always_includes_default_first(client: TestClient) -> None:

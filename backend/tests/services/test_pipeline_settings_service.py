@@ -15,6 +15,8 @@ def store(tmp_path) -> PipelineSettingsStore:
 def test_prompt_and_clarifying_questions_default(store: PipelineSettingsStore):
     assert store.get_prompt() == "DEFAULT PROMPT"
     assert store.get_allow_clarifying_questions() is False
+    assert store.get_tone() == "friendly"
+    assert store.get_custom_tone_text() is None
 
 
 def test_update_persists_prompt_and_toggle(tmp_path):
@@ -30,6 +32,42 @@ def test_update_persists_prompt_and_toggle(tmp_path):
     reloaded = PipelineSettingsStore(path, "DEFAULT PROMPT")
     assert reloaded.get_prompt() == "Custom prompt"
     assert reloaded.get_allow_clarifying_questions() is True
+
+
+def test_update_persists_tone_and_custom_tone_text(tmp_path):
+    path = str(tmp_path / "pipeline_settings.json")
+    store = PipelineSettingsStore(path, "DEFAULT PROMPT")
+
+    store.update(
+        prompt="Custom prompt",
+        allow_clarifying_questions=False,
+        tone="custom",
+        custom_tone_text="sehr knapp und direkt",
+    )
+
+    assert store.get_tone() == "custom"
+    assert store.get_custom_tone_text() == "sehr knapp und direkt"
+
+    # Survives a restart, same as prompt/allow_clarifying_questions.
+    reloaded = PipelineSettingsStore(path, "DEFAULT PROMPT")
+    assert reloaded.get_tone() == "custom"
+    assert reloaded.get_custom_tone_text() == "sehr knapp und direkt"
+
+
+def test_settings_file_written_before_tone_feature_falls_back_to_friendly(tmp_path):
+    # An existing pipeline_settings.json from before this feature has no
+    # "tone"/"custom_tone_text" keys at all - must not crash, must default to
+    # "friendly" instead.
+    path = tmp_path / "pipeline_settings.json"
+    path.write_text(
+        '{"prompt": "Custom prompt", "allow_clarifying_questions": true, "saved_prompts": []}',
+        encoding="utf-8",
+    )
+
+    store = PipelineSettingsStore(str(path), "DEFAULT PROMPT")
+
+    assert store.get_tone() == "friendly"
+    assert store.get_custom_tone_text() is None
 
 
 def test_saved_prompts_start_empty(store: PipelineSettingsStore):

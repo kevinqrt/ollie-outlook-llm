@@ -48,6 +48,29 @@ INTERNAL_OUTPUT_LANGUAGE_NOTE = (
     "finale Antwort-E-Mail beziehen."
 )
 
+TONE_INSTRUCTIONS: dict[str, str] = {
+    "friendly": "TONALITÄT: Verfasse die Antwort in einem freundlichen, zugewandten Ton.",
+    "formal": (
+        "TONALITÄT: Verfasse die Antwort in einem formellen, sachlichen Ton "
+        "(z. B. 'Sehr geehrte/r ...', durchgehend Sie-Anrede)."
+    ),
+    "casual": "TONALITÄT: Verfasse die Antwort in einem lockeren, informellen Ton.",
+}
+
+STYLE_RULE_DISTILL_PROMPT = (
+    "Ein Nutzer hat eine von dir vorgeschlagene E-Mail-Antwort korrigiert oder Feedback dazu "
+    "gegeben. Leite daraus EINE kurze, allgemeine und wiederverwendbare Stilregel für "
+    "zukünftige E-Mail-Antworten ab (z. B. 'Duze den Empfänger.', 'Halte Antworten auf "
+    "maximal drei Sätze.', 'Schließe mit 'Beste Grüße'.').\n\n"
+    "Die Regel darf KEINE Namen, Fakten, Termine oder sonstigen Inhalte aus der konkreten "
+    "E-Mail enthalten, nur Stil, Ton, Länge, Anrede, Grußformel oder Formulierungspräferenzen. "
+    "Betrifft die Korrektur nur den Inhalt dieser einen Antwort (z. B. ein anderes Datum oder "
+    "ein sachlicher Fehler) und lässt sich keine allgemeine Stilregel daraus ableiten, "
+    "antworte mit KEINE.\n\n"
+    "Antworte AUSSCHLIESSLICH mit der Regel in einem Satz auf Deutsch (oder mit KEINE), ohne "
+    "Erklärung, ohne Aufzählungszeichen, ohne Anführungszeichen."
+)
+
 CLARIFICATION_CHECK_PROMPT = (
     "Bevor du eine Antwort auf die eingegangene E-Mail formulierst, prüfe, ob dir eine "
     "Information fehlt, die NUR der Nutzer (nicht die E-Mail selbst) liefern kann und die "
@@ -68,6 +91,62 @@ CLARIFICATION_CHECK_PROMPT = (
     "Rückfrage nötig, antworte mit "
     '{"needs_clarification": false, "question": "", "options": []}.'
 )
+
+
+def build_tone_instruction(tone: str, custom_tone_text: str | None) -> str:
+    """Baut die zusätzliche Tonalitäts-Anweisung für die finale Antwort-E-Mail.
+
+    Wird IMMER zusätzlich zum aktiven System-Prompt angehängt (egal ob
+    Standard- oder gespeicherter/benutzerdefinierter Prompt) - ersetzt ihn
+    nie, ergänzt ihn nur.
+    """
+    if tone == "custom":
+        text = (custom_tone_text or "").strip()
+        return f"TONALITÄT: Verfasse die Antwort in folgendem Ton/Stil: {text}" if text else ""
+    return TONE_INSTRUCTIONS.get(tone, TONE_INSTRUCTIONS["friendly"])
+
+
+def build_style_rules_instruction(rules: list[str]) -> str:
+    """Baut die Anweisung mit den aus Nutzerkorrekturen gelernten Stilregeln.
+
+    Wie die Tonalität wird sie zusätzlich zum aktiven System-Prompt angehängt.
+    Bei Widerspruch haben die Regeln Vorrang, weil der Nutzer sie ausdrücklich
+    so korrigiert hat. Ohne Regeln wird ein leerer String geliefert.
+    """
+    if not rules:
+        return ""
+    lines = "\n".join(f"- {rule}" for rule in rules)
+    return (
+        "GELERNTE STILVORGABEN (aus früheren Korrekturen des Nutzers, bei Widerspruch haben "
+        "sie Vorrang vor der Tonalität; sie gelten nur für die finale Antwort-E-Mail):\n"
+        f"{lines}"
+    )
+
+
+def build_style_rule_distill_prompt(
+    original_reply: str, feedback: str | None, corrected_reply: str | None
+) -> str:
+    """Baut den Prompt, der aus einer Nutzerkorrektur eine allgemeine Stilregel ableiten lässt."""
+    parts = [STYLE_RULE_DISTILL_PROMPT, f"Vorgeschlagene Antwort:\n{original_reply.strip()}"]
+    if feedback and feedback.strip():
+        parts.append(f"Feedback des Nutzers:\n{feedback.strip()}")
+    if corrected_reply and corrected_reply.strip():
+        parts.append(f"Korrigierte Fassung des Nutzers:\n{corrected_reply.strip()}")
+    return "\n\n".join(parts)
+
+
+def build_revision_prompt(email_content: str, previous_reply: str, feedback: str) -> str:
+    """Baut den Prompt, der eine bereits vorgeschlagene Antwort nach Feedback überarbeiten lässt."""
+    return (
+        f"Eingegangene E-Mail:\n{email_content.strip()}\n\n"
+        f"Deine bisherige Antwort darauf:\n{previous_reply.strip()}\n\n"
+        f"Feedback des Nutzers zu dieser Antwort:\n{feedback.strip()}\n\n"
+        "Überarbeite die bisherige Antwort so, dass sie dem Feedback entspricht. Behalte "
+        "Inhalt, Anrede und Grußformel bei, soweit das Feedback nichts anderes verlangt.\n\n"
+        f"{NO_GUESSING_RULE}\n\n"
+        "Gib NUR den fertigen, überarbeiteten Antworttext zurück, ohne Kommentare oder "
+        "Metadaten."
+    )
 
 
 def build_planning_prompt() -> str:

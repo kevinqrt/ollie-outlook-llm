@@ -40,3 +40,21 @@ class ThreadSummaryResponseSchema(BaseSchema):
         description="A concise AI-generated summary of the email thread.",
         examples=["Max fragt, ob das Meeting morgen auf 14 Uhr verschoben werden kann."],
     )
+
+
+class ReviseReplyRequestSchema(BaseSchema):
+    email_content: str = Field(
+        min_length=1, description="The text of the received email the reply answers."
+    )
+    previous_reply: str = Field(
+        min_length=1, description="The reply that was suggested before and should be revised."
+    )
+    feedback: str = Field(
+        min_length=1,
+        description="What the user wants changed in this reply (e.g. 'kürzer').",
+        examples=["kürzer und lockerer"],
+    )
+
+
+class ReviseReplyResponseSchema(BaseSchema):
+    final_reply: str = Field(description="The revised reply text.")

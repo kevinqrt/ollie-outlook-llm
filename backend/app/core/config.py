@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     ics_store_path: str = "./ics_calendars.json"
 
     pipeline_settings_path: str = "./pipeline_settings.json"
+    style_rules_path: str = "./style_rules.json"
 
 
 @lru_cache

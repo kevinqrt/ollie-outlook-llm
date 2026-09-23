@@ -300,6 +300,28 @@ h1 {
   cursor: pointer;
 }
 
+.pipeline-settings-tone-select {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background-color: var(--card-bg);
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.pipeline-settings-tone-custom-input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
 .clarification-block {
   margin-top: 16px;
   padding: 12px;
@@ -355,4 +377,37 @@ h1 {
   border-radius: 4px;
   padding: 6px 8px;
   font-size: 0.85rem;
+}
+
+.feedback-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #f3f9ff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.feedback-row {
+  display: flex;
+  gap: 6px;
+}
+
+.feedback-row input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+}
+
+.feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }

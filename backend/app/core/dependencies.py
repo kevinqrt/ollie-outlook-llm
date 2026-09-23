@@ -12,6 +12,7 @@ from app.services.ics_calendar_service import IcsCalendarService, IcsCalendarSto
 from app.services.llm_service import LlmService
 from app.services.pipeline_settings_service import PipelineSettingsStore
 from app.services.scheduling_service import SchedulingService
+from app.services.style_rules_service import StyleRulesStore
 from app.services.vector_store_service import VectorStoreService
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ class ServiceContainer:
         self.graph_calendar_service: CalendarService | None = None
         self.scheduling_service: SchedulingService | None = None
         self.pipeline_settings_service: PipelineSettingsStore | None = None
+        self.style_rules_service: StyleRulesStore | None = None
 
     def init_services(self) -> None:
         """Initialize all global services."""
@@ -38,6 +40,7 @@ class ServiceContainer:
         self.pipeline_settings_service = PipelineSettingsStore(
             settings.pipeline_settings_path, DEFAULT_SYSTEM_PROMPT
         )
+        self.style_rules_service = StyleRulesStore(settings.style_rules_path)
         if settings.calendar_mock_mode:
             logger.warning(
                 "CALENDAR_MOCK_MODE is active - calendar endpoints/MCP tools return fake data."
@@ -67,6 +70,7 @@ class ServiceContainer:
         self.graph_calendar_service = None
         self.scheduling_service = None
         self.pipeline_settings_service = None
+        self.style_rules_service = None
 
 
 # Global instance of the container
@@ -116,6 +120,13 @@ def get_pipeline_settings_service() -> PipelineSettingsStore:
     return container.pipeline_settings_service
 
 
+def get_style_rules_service() -> StyleRulesStore:
+    """Dependency to retrieve the learned style rules store."""
+    if container.style_rules_service is None:
+        raise RuntimeError("StyleRulesStore is not initialized.")
+    return container.style_rules_service
+
+
 # Annotated Dependency Aliases
 VectorStoreServiceDep = Annotated[VectorStoreService, Depends(get_vector_store_service)]
 LlmServiceDep = Annotated[LlmService, Depends(get_llm_service)]
@@ -125,3 +136,4 @@ SchedulingServiceDep = Annotated[SchedulingService, Depends(get_scheduling_servi
 PipelineSettingsServiceDep = Annotated[
     PipelineSettingsStore, Depends(get_pipeline_settings_service)
 ]
+StyleRulesServiceDep = Annotated[StyleRulesStore, Depends(get_style_rules_service)]

@@ -86,7 +86,7 @@
           "email"
         ],
         "summary": "Generate AI email suggestion with live pipeline progress",
-        "description": "Generate a reply suggestion, streaming each pipeline step as it completes.\n\nIf the email contains a meeting request and the calendar is connected, the\npipeline is augmented with real availability, and the final `done` event\ncarries a concrete meeting proposal.\n\nThe system prompt and whether the pipeline may ask a clarifying question\nbefore answering come from the user-configurable pipeline settings.",
+        "description": "Generate a reply suggestion, streaming each pipeline step as it completes.\n\nIf the email contains a meeting request and the calendar is connected, the\npipeline is augmented with real availability, and the final `done` event\ncarries a concrete meeting proposal.\n\nThe system prompt, tone and whether the pipeline may ask a clarifying question\nbefore answering come from the user-configurable pipeline settings; style\nrules learned from earlier user corrections are appended to the prompt.",
         "operationId": "streamEmailSuggestion",
         "requestBody": {
           "content": {
@@ -122,19 +122,19 @@
         }
       }
     },
-    "/email/summarize": {
+    "/email/suggestion/revise": {
       "post": {
         "tags": [
           "email"
         ],
-        "summary": "Summarize an email thread",
-        "description": "Summarize an email thread, including quoted history, in a few sentences.",
-        "operationId": "summarizeEmailThread",
+        "summary": "Revise an already suggested reply according to user feedback",
+        "description": "Rewrite the previous reply with a single LLM call, applying the feedback.\n\nUses the same system prompt as a fresh suggestion (base prompt, tone and\nlearned style rules) but skips the multi-step pipeline. The feedback applies\nto this one reply only; it is not stored.",
+        "operationId": "postReplyRevision",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ThreadSummaryRequestSchema"
+                "$ref": "#/components/schemas/ReviseReplyRequestSchema"
               }
             }
           },
@@ -146,13 +146,13 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ThreadSummaryResponseSchema"
+                  "$ref": "#/components/schemas/ReviseReplyResponseSchema"
                 }
               }
             }
           },
           "503": {
-            "description": "DGX model unavailable",
+            "description": "LLM unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -379,6 +379,239 @@
           },
           "404": {
             "description": "Prompt not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pipeline/style-rules": {
+      "get": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "List the style rules learned from user corrections",
+        "operationId": "getStyleRules",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StyleRulesSchema"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "Delete all learned style rules",
+        "operationId": "deleteAllStyleRules",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/pipeline/style-rules/settings": {
+      "put": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "Switch learning from user corrections on or off",
+        "operationId": "putStyleRulesSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStyleRulesSettingsRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StyleRulesSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pipeline/corrections": {
+      "post": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "Learn a style rule from a user correction of a suggested reply",
+        "description": "Derive one short, general style rule from the correction and store it.\n\nOnly the rule text is stored, never the reply or the e-mail it came from.",
+        "operationId": "postCorrection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCorrectionRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorrectionResponseSchema"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Learning is switched off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "LLM unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pipeline/style-rules/{rule_id}": {
+      "delete": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "Delete one learned style rule",
+        "operationId": "deleteStyleRule",
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Rule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/email/summarize": {
+      "post": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Summarize an email thread",
+        "description": "Summarize an email thread, including quoted history, in a few sentences.",
+        "operationId": "summarizeEmailThread",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadSummaryRequestSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadSummaryResponseSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DGX model unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -1163,6 +1396,68 @@
         ],
         "title": "ChatResponseSchema"
       },
+      "CorrectionResponseSchema": {
+        "properties": {
+          "learned": {
+            "type": "boolean",
+            "title": "Learned",
+            "description": "Ob aus der Korrektur eine neue Stilregel entstanden ist. False, wenn nur der Inhalt ge\u00e4ndert wurde oder die Regel bereits bekannt ist."
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StyleRuleSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "learned"
+        ],
+        "title": "CorrectionResponseSchema"
+      },
+      "CreateCorrectionRequestSchema": {
+        "properties": {
+          "originalReply": {
+            "type": "string",
+            "title": "Originalreply",
+            "description": "Der von Ollie vorgeschlagene Antworttext."
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback",
+            "description": "Freitext-Anweisung, was k\u00fcnftig anders sein soll (z. B. 'k\u00fcrzer')."
+          },
+          "correctedReply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correctedreply",
+            "description": "Optional: die vom Nutzer korrigierte Fassung der Antwort."
+          }
+        },
+        "type": "object",
+        "required": [
+          "originalReply"
+        ],
+        "title": "CreateCorrectionRequestSchema"
+      },
       "CreateSavedPromptRequestSchema": {
         "properties": {
           "text": {
@@ -1529,6 +1824,30 @@
             "title": "Allowclarifyingquestions",
             "description": "Ob die Pipeline vor der Antwort-Generierung R\u00fcckfragen an den Nutzer stellen darf, statt Fehlendes zu erfinden oder zu \u00fcbergehen.",
             "default": false
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "friendly",
+              "formal",
+              "casual",
+              "custom"
+            ],
+            "title": "Tone",
+            "description": "Tonalit\u00e4t, die der finalen Antwort-E-Mail zus\u00e4tzlich zum System-Prompt vorgegeben wird.",
+            "default": "friendly"
+          },
+          "customToneText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customtonetext",
+            "description": "Freitext-Tonvorgabe, nur relevant wenn tone == 'custom'."
           }
         },
         "type": "object",
@@ -1536,6 +1855,52 @@
           "prompt"
         ],
         "title": "PipelineSettingsSchema"
+      },
+      "ReviseReplyRequestSchema": {
+        "properties": {
+          "emailContent": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Emailcontent",
+            "description": "The text of the received email the reply answers."
+          },
+          "previousReply": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Previousreply",
+            "description": "The reply that was suggested before and should be revised."
+          },
+          "feedback": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Feedback",
+            "description": "What the user wants changed in this reply (e.g. 'k\u00fcrzer').",
+            "examples": [
+              "k\u00fcrzer und lockerer"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "emailContent",
+          "previousReply",
+          "feedback"
+        ],
+        "title": "ReviseReplyRequestSchema"
+      },
+      "ReviseReplyResponseSchema": {
+        "properties": {
+          "finalReply": {
+            "type": "string",
+            "title": "Finalreply",
+            "description": "The revised reply text."
+          }
+        },
+        "type": "object",
+        "required": [
+          "finalReply"
+        ],
+        "title": "ReviseReplyResponseSchema"
       },
       "SavedPromptListSchema": {
         "properties": {
@@ -1615,6 +1980,47 @@
         ],
         "title": "SetSelfIcsUrlRequestSchema"
       },
+      "StyleRuleSchema": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Kurze, allgemeine Stilregel, abgeleitet aus einer Korrektur."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "StyleRuleSchema"
+      },
+      "StyleRulesSchema": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "description": "Ob gelernte Regeln bei neuen Antwortvorschl\u00e4gen ber\u00fccksichtigt (und neue Korrekturen gelernt) werden."
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/StyleRuleSchema"
+            },
+            "type": "array",
+            "title": "Rules"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "rules"
+        ],
+        "title": "StyleRulesSchema"
+      },
       "ThreadSummaryRequestSchema": {
         "properties": {
           "threadText": {
@@ -1661,6 +2067,28 @@
             "type": "boolean",
             "title": "Allowclarifyingquestions",
             "default": false
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "friendly",
+              "formal",
+              "casual",
+              "custom"
+            ],
+            "title": "Tone",
+            "default": "friendly"
+          },
+          "customToneText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customtonetext"
           }
         },
         "type": "object",
@@ -1682,6 +2110,19 @@
           "text"
         ],
         "title": "UpdateSavedPromptRequestSchema"
+      },
+      "UpdateStyleRulesSettingsRequestSchema": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "UpdateStyleRulesSettingsRequestSchema"
       },
       "ValidationError": {
         "properties": {

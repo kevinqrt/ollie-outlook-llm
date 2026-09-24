@@ -17,7 +17,7 @@ from app.api.schemas.pipeline_schema import (
 )
 from app.pipeline import rag_client
 from app.pipeline.clarification_parser import parse_clarification_check
-from app.pipeline.llm_client import ChatMessage, build_chat_model, invoke_chat
+from app.pipeline.llm_client import PIPELINE_MODEL, ChatMessage, build_chat_model, invoke_chat
 from app.pipeline.plan_parser import parse_plan
 from app.pipeline.prompt_builder import (
     DEFAULT_SYSTEM_PROMPT,
@@ -67,6 +67,7 @@ async def run_pipeline(
     system_prompt: str | None = None,
     allow_clarifying_questions: bool = False,
     clarification_answer: str | None = None,
+    model: str = PIPELINE_MODEL,
 ) -> AsyncIterator[PipelineEvent]:
     """Zerlegt die Antwort-Generierung in nachvollziehbare Teilschritte.
 
@@ -111,7 +112,7 @@ async def run_pipeline(
     async with rag_client.build_client() as rag_http_client:
         session_id: str | None = None
         try:
-            chat_model = build_chat_model()
+            chat_model = build_chat_model(model)
 
             if allow_clarifying_questions and not has_answer:
                 check_answer = await invoke_chat(

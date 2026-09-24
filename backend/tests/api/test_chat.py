@@ -26,7 +26,7 @@ def test_post_chat_success_without_meeting_proposal(client: TestClient) -> None:
         "reply": "Hallo, wie kann ich helfen?",
         "meetingProposal": None,
     }
-    mock_augment.assert_called_once_with("Hallo")
+    mock_augment.assert_called_once_with("Hallo", model="llama3.2:3b")
     mock_chat.assert_called_once()
 
 
@@ -93,7 +93,7 @@ def test_post_chat_uses_latest_user_message_for_scheduling(client: TestClient) -
             },
         )
 
-    mock_augment.assert_called_once_with("Zweite Nachricht")
+    mock_augment.assert_called_once_with("Zweite Nachricht", model="llama3.2:3b")
 
 
 def test_post_chat_service_error(client: TestClient) -> None:

@@ -50,11 +50,18 @@ class LlmService:
             return ""
         return f"\n\n{header}\n" + "\n".join([r.content for r in results])
 
-    async def chat(self, messages: list[ChatMessageSchema], extra_context: str = "") -> str:
+    async def chat(
+        self,
+        messages: list[ChatMessageSchema],
+        extra_context: str = "",
+        model: str | None = None,
+    ) -> str:
         """Process a conversation history and return an AI-generated reply.
 
         Integrates context from the knowledge base based on the latest user message.
-        `extra_context` (e.g. calendar availability) is appended verbatim.
+        `extra_context` (e.g. calendar availability) is appended verbatim. `model`
+        overrides `settings.llm_model` when the caller resolved a project-wide
+        model choice (see `app.core.model_catalog`).
         """
         if not messages:
             return "No messages provided."
@@ -79,7 +86,7 @@ class LlmService:
         request_body = DirectQueryRequest(
             documents_text=f"{self._today_line()}{kb_context}{extra_context}",
             query=conversation_history + "\nAssistant:",
-            llm_model=settings.llm_model,
+            llm_model=model or settings.llm_model,
         )
 
         logger.info("Sending chat request to RAG service: %s", request_body.to_dict())

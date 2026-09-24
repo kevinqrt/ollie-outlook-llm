@@ -36,6 +36,8 @@ from app.api.schemas.knowledge_schema import (
 from app.api.schemas.pipeline_schema import DoneEvent
 from app.api.schemas.pipeline_settings_schema import (
     CreateSavedPromptRequestSchema,
+    ModelOptionListSchema,
+    ModelOptionSchema,
     PipelineSettingsSchema,
     SavedPromptListSchema,
     SavedPromptSchema,
@@ -58,6 +60,7 @@ from app.core.dependencies import (
     StyleRulesServiceDep,
     VectorStoreServiceDep,
 )
+from app.core.model_catalog import MODEL_CATALOG, ModelChoice, get_model_choice
 from app.pipeline import run_pipeline, summarize_thread
 from app.pipeline.llm_client import LlmClientError
 from app.pipeline.prompt_builder import build_style_rules_instruction, build_tone_instruction
@@ -75,6 +78,11 @@ from app.services.pipeline_settings_service import (
 from app.services.style_rules_service import StyleRuleNotFoundError, StyleRulesStore
 
 api_router = APIRouter()
+
+
+def _resolve_model_choice(pipeline_settings_service: PipelineSettingsStore) -> ModelChoice:
+    """Resolve the project-wide model choice for the currently configured id."""
+    return get_model_choice(pipeline_settings_service.get_model_id())
 
 
 def _build_system_prompt(
@@ -121,6 +129,7 @@ async def post_chat(
     payload: ChatRequestSchema,
     service: LlmServiceDep,
     scheduling_service: SchedulingServiceDep,
+    pipeline_settings_service: PipelineSettingsServiceDep,
 ) -> ChatResponseSchema:
     """Provide a classical chat interface with history and RAG context.
 
@@ -130,9 +139,14 @@ async def post_chat(
     latest_user_message = next(
         (m.content for m in reversed(payload.messages) if m.role == "user"), ""
     )
+    model = _resolve_model_choice(pipeline_settings_service).rag_model
     try:
-        augmentation = await scheduling_service.augment_with_availability(latest_user_message)
-        reply = await service.chat(payload.messages, extra_context=augmentation.context)
+        augmentation = await scheduling_service.augment_with_availability(
+            latest_user_message, model=model
+        )
+        reply = await service.chat(
+            payload.messages, extra_context=augmentation.context, model=model
+        )
         return ChatResponseSchema(reply=reply, meeting_proposal=augmentation.proposal)
     except LlmServiceError as exc:
         raise HTTPException(
@@ -166,8 +180,9 @@ async def stream_email_suggestion(
     before answering come from the user-configurable pipeline settings; style
     rules learned from earlier user corrections are appended to the prompt.
     """
+    model_choice = _resolve_model_choice(pipeline_settings_service)
     augmentation = await scheduling_service.augment_with_availability(
-        payload.email_content, payload.attendees
+        payload.email_content, payload.attendees, model=model_choice.rag_model
     )
 
     system_prompt = _build_system_prompt(pipeline_settings_service, style_rules_service)
@@ -179,6 +194,7 @@ async def stream_email_suggestion(
             system_prompt=system_prompt,
             allow_clarifying_questions=pipeline_settings_service.get_allow_clarifying_questions(),
             clarification_answer=payload.clarification_answer,
+            model=model_choice.dgx_model,
         ):
             if isinstance(event, DoneEvent):
                 event = DoneEvent(
@@ -209,9 +225,14 @@ async def revise_email_suggestion(
     to this one reply only; it is not stored.
     """
     system_prompt = _build_system_prompt(pipeline_settings_service, style_rules_service)
+    model = _resolve_model_choice(pipeline_settings_service).dgx_model
     try:
         final_reply = await revise_reply(
-            system_prompt, payload.email_content, payload.previous_reply, payload.feedback
+            system_prompt,
+            payload.email_content,
+            payload.previous_reply,
+            payload.feedback,
+            model=model,
         )
     except LlmClientError as exc:
         raise HTTPException(
@@ -236,6 +257,7 @@ async def get_pipeline_settings(
         allow_clarifying_questions=service.get_allow_clarifying_questions(),
         tone=service.get_tone(),
         custom_tone_text=service.get_custom_tone_text(),
+        model=service.get_model_id(),
     )
 
 
@@ -255,12 +277,27 @@ async def put_pipeline_settings(
         allow_clarifying_questions=payload.allow_clarifying_questions,
         tone=payload.tone,
         custom_tone_text=payload.custom_tone_text,
+        model=payload.model,
     )
     return PipelineSettingsSchema(
         prompt=service.get_prompt(),
         allow_clarifying_questions=service.get_allow_clarifying_questions(),
         tone=service.get_tone(),
         custom_tone_text=service.get_custom_tone_text(),
+        model=service.get_model_id(),
+    )
+
+
+@api_router.get(
+    "/pipeline/models",
+    response_model=ModelOptionListSchema,
+    summary="List selectable AI models",
+    tags=["pipeline"],
+    operation_id="getPipelineModels",
+)
+async def get_pipeline_models() -> ModelOptionListSchema:
+    return ModelOptionListSchema(
+        models=[ModelOptionSchema(id=choice.id, label=choice.label) for choice in MODEL_CATALOG]
     )
 
 
@@ -388,6 +425,7 @@ async def put_style_rules_settings(
 async def post_correction(
     payload: CreateCorrectionRequestSchema,
     service: StyleRulesServiceDep,
+    pipeline_settings_service: PipelineSettingsServiceDep,
 ) -> CorrectionResponseSchema:
     """Derive one short, general style rule from the correction and store it.
 
@@ -398,9 +436,10 @@ async def post_correction(
             status_code=status.HTTP_409_CONFLICT,
             detail="Lernen aus Korrekturen ist ausgeschaltet.",
         )
+    model = _resolve_model_choice(pipeline_settings_service).dgx_model
     try:
         rule_text = await derive_style_rule(
-            payload.original_reply, payload.feedback, payload.corrected_reply
+            payload.original_reply, payload.feedback, payload.corrected_reply, model=model
         )
     except LlmClientError as exc:
         raise HTTPException(
@@ -454,10 +493,12 @@ async def delete_all_style_rules(service: StyleRulesServiceDep) -> None:
 )
 async def summarize_email_thread(
     payload: ThreadSummaryRequestSchema,
+    pipeline_settings_service: PipelineSettingsServiceDep,
 ) -> ThreadSummaryResponseSchema:
     """Summarize an email thread, including quoted history, in a few sentences."""
+    model = _resolve_model_choice(pipeline_settings_service).dgx_model
     try:
-        summary = await summarize_thread(payload.thread_text)
+        summary = await summarize_thread(payload.thread_text, model=model)
         return ThreadSummaryResponseSchema(summary=summary)
     except LlmClientError as exc:
         raise HTTPException(

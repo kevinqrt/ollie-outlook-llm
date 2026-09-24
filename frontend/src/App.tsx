@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type {
   MeetingProposalSchema,
+  ModelOptionSchema,
   PipelineSettingsSchema,
 } from './api/generated';
 import type {
@@ -16,6 +17,7 @@ import { openCalendarComposeWindow } from './services/calendarWorkflow';
 import { officeService } from './services/officeService';
 import {
   fetchPipelineSettings,
+  listModelOptions,
   savePipelineSettings,
 } from './services/pipelineSettingsWorkflow';
 import { reviseReply, runReplyWorkflow } from './services/replyWorkflow';
@@ -66,6 +68,8 @@ function App() {
     useState(false);
   const [tone, setTone] = useState<ToneOption>('friendly');
   const [customToneText, setCustomToneText] = useState('');
+  const [modelId, setModelId] = useState('');
+  const [modelOptions, setModelOptions] = useState<ModelOptionSchema[]>([]);
   const [savingPipelineSettings, setSavingPipelineSettings] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -94,12 +98,18 @@ function App() {
         setAllowClarifyingQuestions(s.allowClarifyingQuestions ?? false);
         setTone(s.tone ?? 'friendly');
         setCustomToneText(s.customToneText ?? '');
+        setModelId(s.model ?? '');
       })
       .catch((error) => {
         console.error(
           'Pipeline-Einstellungen konnten nicht geladen werden:',
           error
         );
+      });
+    listModelOptions()
+      .then(setModelOptions)
+      .catch((error) => {
+        console.error('Modell-Liste konnte nicht geladen werden:', error);
       });
   }, []);
 
@@ -112,12 +122,14 @@ function App() {
         promptDraft,
         allowClarifyingQuestions,
         tone,
-        tone === 'custom' ? customToneText.trim() : null
+        tone === 'custom' ? customToneText.trim() : null,
+        modelId
       );
       setPromptDraft(saved.prompt);
       setAllowClarifyingQuestions(saved.allowClarifyingQuestions ?? false);
       setTone(saved.tone ?? 'friendly');
       setCustomToneText(saved.customToneText ?? '');
+      setModelId(saved.model ?? '');
       setAssistantView('main');
       notify('Einstellungen gespeichert.', 'success');
     } catch (error) {
@@ -615,6 +627,24 @@ function App() {
                 onChange={(e) => setCustomToneText(e.target.value)}
               />
             )}
+            <label
+              className="pipeline-settings-field-label"
+              htmlFor="pipeline-model"
+            >
+              KI-Modell:
+            </label>
+            <select
+              id="pipeline-model"
+              className="pipeline-settings-tone-select"
+              value={modelId}
+              onChange={(e) => setModelId(e.target.value)}
+            >
+              {modelOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               className="secondary-button"

@@ -21,7 +21,7 @@ class ChatMessage(TypedDict):
 PIPELINE_MODEL = "openai/gpt-oss-120b"
 
 
-def build_chat_model() -> ChatOpenAI:
+def build_chat_model(model: str = PIPELINE_MODEL) -> ChatOpenAI:
     if not settings.model_api_base_url:
         raise LlmClientError(
             "MODEL_API_BASE_URL ist nicht gesetzt. Bitte in der .env bzw. im "
@@ -34,7 +34,7 @@ def build_chat_model() -> ChatOpenAI:
         # hinter einem auth-pflichtigen Proxy (z. B. LiteLLM, das einen
         # "sk-..."-Virtual-Key verlangt), wird MODEL_API_KEY genutzt.
         api_key=SecretStr(settings.model_api_key or "not-needed"),
-        model=PIPELINE_MODEL,
+        model=model,
         max_completion_tokens=settings.llm_max_tokens,
         timeout=120.0,
     )

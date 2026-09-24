@@ -1,9 +1,13 @@
-from app.pipeline.llm_client import build_chat_model, invoke_chat
+from app.pipeline.llm_client import PIPELINE_MODEL, build_chat_model, invoke_chat
 from app.pipeline.prompt_builder import build_revision_prompt
 
 
 async def revise_reply(
-    system_prompt: str, email_content: str, previous_reply: str, feedback: str
+    system_prompt: str,
+    email_content: str,
+    previous_reply: str,
+    feedback: str,
+    model: str = PIPELINE_MODEL,
 ) -> str:
     """Überarbeitet eine bereits vorgeschlagene Antwort nach Nutzerfeedback.
 
@@ -12,7 +16,7 @@ async def revise_reply(
     (`LlmClientError`, auch bei leerer Antwort) werden nicht verschluckt.
     """
     answer = await invoke_chat(
-        build_chat_model(),
+        build_chat_model(model),
         [
             {"role": "system", "content": system_prompt},
             {

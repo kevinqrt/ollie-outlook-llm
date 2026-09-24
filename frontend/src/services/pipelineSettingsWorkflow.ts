@@ -1,7 +1,9 @@
 import {
   deleteSavedPrompt as deleteSavedPromptApi,
+  getPipelineModels,
   getPipelineSettings,
   getSavedPrompts,
+  type ModelOptionSchema,
   type PipelineSettingsSchema,
   postSavedPrompt,
   putPipelineSettings,
@@ -56,10 +58,11 @@ export async function savePipelineSettings(
   prompt: string,
   allowClarifyingQuestions: boolean,
   tone: PipelineSettingsSchema['tone'],
-  customToneText: string | null
+  customToneText: string | null,
+  model: string
 ): Promise<PipelineSettingsSchema> {
   const response = await putPipelineSettings({
-    body: { prompt, allowClarifyingQuestions, tone, customToneText },
+    body: { prompt, allowClarifyingQuestions, tone, customToneText, model },
   });
   if (response.error || !response.data) {
     throw new Error(
@@ -70,6 +73,20 @@ export async function savePipelineSettings(
     );
   }
   return response.data;
+}
+
+/** Lädt die Liste der auswählbaren KI-Modelle. */
+export async function listModelOptions(): Promise<ModelOptionSchema[]> {
+  const response = await getPipelineModels();
+  if (response.error || !response.data) {
+    throw new Error(
+      extractErrorMessage(
+        response.error as { detail?: string | ValidationError[] },
+        response.response?.status
+      )
+    );
+  }
+  return response.data.models;
 }
 
 /** Lädt die Bibliothek gespeicherter Prompt-Vorlagen. */

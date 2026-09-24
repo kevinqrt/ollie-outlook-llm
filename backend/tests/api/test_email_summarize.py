@@ -16,7 +16,9 @@ def test_summarize_email_thread_success(client: TestClient) -> None:
 
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {"summary": "Kurze Zusammenfassung des Verlaufs."}
-    mock_summarize.assert_called_once_with("Hallo,\n\nkoennen wir uns treffen?")
+    mock_summarize.assert_called_once_with(
+        "Hallo,\n\nkoennen wir uns treffen?", model="openai/gpt-oss-120b"
+    )
 
 
 def test_summarize_email_thread_empty_content(client: TestClient) -> None:

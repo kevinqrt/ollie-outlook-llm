@@ -24,6 +24,7 @@ def test_put_settings_persists_and_is_returned_by_get(client: TestClient) -> Non
         "allowClarifyingQuestions": True,
         "tone": "friendly",
         "customToneText": None,
+        "model": "llama3.2-3b",
     }
 
     get_response = client.get("/pipeline/settings")
@@ -32,6 +33,7 @@ def test_put_settings_persists_and_is_returned_by_get(client: TestClient) -> Non
         "allowClarifyingQuestions": True,
         "tone": "friendly",
         "customToneText": None,
+        "model": "llama3.2-3b",
     }
 
 

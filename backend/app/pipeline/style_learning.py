@@ -1,4 +1,4 @@
-from app.pipeline.llm_client import build_chat_model, invoke_chat
+from app.pipeline.llm_client import PIPELINE_MODEL, build_chat_model, invoke_chat
 from app.pipeline.prompt_builder import build_style_rule_distill_prompt
 
 MAX_RULE_LENGTH = 200
@@ -19,7 +19,10 @@ def normalize_rule(raw: str) -> str | None:
 
 
 async def derive_style_rule(
-    original_reply: str, feedback: str | None, corrected_reply: str | None
+    original_reply: str,
+    feedback: str | None,
+    corrected_reply: str | None,
+    model: str = PIPELINE_MODEL,
 ) -> str | None:
     """Lässt das LLM aus einer Nutzerkorrektur eine allgemeine Stilregel ableiten.
 
@@ -27,7 +30,7 @@ async def derive_style_rule(
     Fehler des Modells (`LlmClientError`) werden bewusst nicht verschluckt.
     """
     answer = await invoke_chat(
-        build_chat_model(),
+        build_chat_model(model),
         [
             {
                 "role": "user",

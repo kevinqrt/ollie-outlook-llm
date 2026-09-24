@@ -172,7 +172,7 @@ class SchedulingService:
         self._calendar_service = calendar_service
 
     async def augment_with_availability(
-        self, text: str, attendees: list[str] | None = None
+        self, text: str, attendees: list[str] | None = None, model: str | None = None
     ) -> AvailabilityAugmentation:
         """Check `text` for a meeting request or a query about existing events
 
@@ -184,7 +184,7 @@ class SchedulingService:
         if not text.strip():
             return AvailabilityAugmentation()
 
-        detection = await self._detect_meeting_request(text)
+        detection = await self._detect_meeting_request(text, model)
         if detection is None:
             return AvailabilityAugmentation()
 
@@ -336,7 +336,9 @@ class SchedulingService:
         result: list[str] = checker(attendees)
         return result
 
-    async def _detect_meeting_request(self, text: str) -> dict[str, Any] | None:
+    async def _detect_meeting_request(
+        self, text: str, model: str | None = None
+    ) -> dict[str, Any] | None:
         try:
             raw_reply = await self._llm_service.chat(
                 [
@@ -344,7 +346,8 @@ class SchedulingService:
                         role="user",
                         content=_CLASSIFICATION_PROMPT.format(text=text),
                     )
-                ]
+                ],
+                model=model,
             )
         except LlmServiceError:
             logger.info("Skipping calendar augmentation: classification request failed.")

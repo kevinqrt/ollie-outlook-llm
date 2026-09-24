@@ -234,6 +234,27 @@
         }
       }
     },
+    "/pipeline/models": {
+      "get": {
+        "tags": [
+          "pipeline"
+        ],
+        "summary": "List selectable AI models",
+        "operationId": "getPipelineModels",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelOptionListSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/pipeline/settings/prompts": {
       "get": {
         "tags": [
@@ -1812,6 +1833,40 @@
         ],
         "title": "MeetingTimeSuggestionSchema"
       },
+      "ModelOptionListSchema": {
+        "properties": {
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelOptionSchema"
+            },
+            "type": "array",
+            "title": "Models"
+          }
+        },
+        "type": "object",
+        "required": [
+          "models"
+        ],
+        "title": "ModelOptionListSchema"
+      },
+      "ModelOptionSchema": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "ModelOptionSchema"
+      },
       "PipelineSettingsSchema": {
         "properties": {
           "prompt": {
@@ -1848,6 +1903,12 @@
             ],
             "title": "Customtonetext",
             "description": "Freitext-Tonvorgabe, nur relevant wenn tone == 'custom'."
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "Id des ausgew\u00e4hlten KI-Modells (siehe GET /pipeline/models), gilt projektweit f\u00fcr alle LLM-Aufrufe.",
+            "default": "llama3.2-3b"
           }
         },
         "type": "object",
@@ -2089,6 +2150,11 @@
               }
             ],
             "title": "Customtonetext"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "llama3.2-3b"
           }
         },
         "type": "object",

@@ -418,6 +418,30 @@ export type MeetingTimeSuggestionSchema = {
 };
 
 /**
+ * ModelOptionListSchema
+ */
+export type ModelOptionListSchema = {
+    /**
+     * Models
+     */
+    models: Array<ModelOptionSchema>;
+};
+
+/**
+ * ModelOptionSchema
+ */
+export type ModelOptionSchema = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Label
+     */
+    label: string;
+};
+
+/**
  * PipelineSettingsSchema
  */
 export type PipelineSettingsSchema = {
@@ -445,6 +469,12 @@ export type PipelineSettingsSchema = {
      * Freitext-Tonvorgabe, nur relevant wenn tone == 'custom'.
      */
     customToneText?: string | null;
+    /**
+     * Model
+     *
+     * Id des ausgewählten KI-Modells (siehe GET /pipeline/models), gilt projektweit für alle LLM-Aufrufe.
+     */
+    model?: string;
 };
 
 /**
@@ -615,6 +645,10 @@ export type UpdatePipelineSettingsRequestSchema = {
      * Customtonetext
      */
     customToneText?: string | null;
+    /**
+     * Model
+     */
+    model?: string;
 };
 
 /**
@@ -804,6 +838,22 @@ export type PutPipelineSettingsResponses = {
 };
 
 export type PutPipelineSettingsResponse = PutPipelineSettingsResponses[keyof PutPipelineSettingsResponses];
+
+export type GetPipelineModelsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/pipeline/models';
+};
+
+export type GetPipelineModelsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ModelOptionListSchema;
+};
+
+export type GetPipelineModelsResponse = GetPipelineModelsResponses[keyof GetPipelineModelsResponses];
 
 export type GetSavedPromptsData = {
     body?: never;

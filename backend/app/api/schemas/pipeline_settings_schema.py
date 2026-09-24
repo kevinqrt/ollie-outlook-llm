@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from app.api.schemas.base_schema import BaseSchema
+from app.core.model_catalog import DEFAULT_MODEL_ID
 
 ToneOption = Literal["friendly", "formal", "casual", "custom"]
 
@@ -23,6 +24,11 @@ class PipelineSettingsSchema(BaseSchema):
         default=None,
         description="Freitext-Tonvorgabe, nur relevant wenn tone == 'custom'.",
     )
+    model: str = Field(
+        default=DEFAULT_MODEL_ID,
+        description="Id des ausgewählten KI-Modells (siehe GET /pipeline/models), gilt "
+        "projektweit für alle LLM-Aufrufe.",
+    )
 
 
 class UpdatePipelineSettingsRequestSchema(BaseSchema):
@@ -30,12 +36,22 @@ class UpdatePipelineSettingsRequestSchema(BaseSchema):
     allow_clarifying_questions: bool = False
     tone: ToneOption = "friendly"
     custom_tone_text: str | None = None
+    model: str = DEFAULT_MODEL_ID
 
     @model_validator(mode="after")
     def _require_custom_tone_text_when_custom(self) -> "UpdatePipelineSettingsRequestSchema":
         if self.tone == "custom" and not (self.custom_tone_text or "").strip():
             raise ValueError("custom_tone_text ist erforderlich, wenn tone 'custom' ist.")
         return self
+
+
+class ModelOptionSchema(BaseSchema):
+    id: str
+    label: str
+
+
+class ModelOptionListSchema(BaseSchema):
+    models: list[ModelOptionSchema]
 
 
 class SavedPromptSchema(BaseSchema):

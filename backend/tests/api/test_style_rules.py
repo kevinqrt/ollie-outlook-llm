@@ -37,7 +37,9 @@ def test_post_correction_passes_all_inputs_to_the_derivation(client: TestClient)
     with patch(DERIVE, AsyncMock(return_value="Halte dich kurz.")) as derive:
         _post_correction(client, correctedReply="Hallo!")
 
-    derive.assert_awaited_once_with("Sehr geehrte Damen und Herren, ...", "immer duzen", "Hallo!")
+    derive.assert_awaited_once_with(
+        "Sehr geehrte Damen und Herren, ...", "immer duzen", "Hallo!", model="openai/gpt-oss-120b"
+    )
 
 
 def test_post_correction_without_general_rule_is_not_learned(client: TestClient) -> None:

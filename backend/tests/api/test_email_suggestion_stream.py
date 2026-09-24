@@ -77,7 +77,7 @@ def test_stream_email_suggestion_includes_meeting_proposal(client: TestClient) -
         )
 
     mock_augment.assert_called_once_with(
-        "Können wir das Meeting verschieben?", ["alice@example.com"]
+        "Können wir das Meeting verschieben?", ["alice@example.com"], model="llama3.2:3b"
     )
     done_event = events[-1]
     assert done_event["type"] == "done"

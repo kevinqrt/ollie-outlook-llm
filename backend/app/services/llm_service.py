@@ -7,7 +7,7 @@ from rag_service_api import Client, DirectQueryRequest, HTTPValidationError, dir
 from app.api.schemas.chat_schema import ChatMessageSchema
 from app.core.config import settings
 from app.core.datetime_utils import format_datetime_de
-from app.services.vector_store_service import VectorStoreService
+from app.services.vector_store_service import VectorStoreService, build_kb_context
 
 logger = logging.getLogger(__name__)
 
@@ -36,37 +36,6 @@ class LlmService:
         """
         return f"Heute ist {format_datetime_de(datetime.now(UTC))} Uhr."
 
-    async def _get_kb_context(
-        self,
-        query: str,
-        k: int = 3,
-        header: str = "Relevante Auszuege aus der Wissensbasis:",
-    ) -> str:
-        """Fetch and format context from the vector store.
-
-        Besides the `k` excerpts most similar to `query`, the model also gets
-        the list of indexed documents and each excerpt's source file - without
-        them, a question about the knowledge base itself ("was liegt in der
-        Wissensbasis?") only yields a few unrelated, unlabelled excerpts and
-        the model can't tell they even come from the knowledge base.
-        """
-        if not query:
-            return ""
-
-        documents = await self.vector_store.list_documents()
-        if not documents:
-            return "\n\nDie Wissensbasis ist leer - es wurden noch keine Dokumente hochgeladen."
-        context = "\n\nDokumente in der Wissensbasis (vom Nutzer hochgeladene PDFs): " + ", ".join(
-            d.source for d in documents
-        )
-
-        results = await self.vector_store.search(query, k=k)
-        if results:
-            context += f"\n\n{header}\n" + "\n".join(
-                f"[Quelle: {r.metadata.get('source', 'unbekannt')}] {r.content}" for r in results
-            )
-        return context
-
     async def chat(
         self,
         messages: list[ChatMessageSchema],
@@ -90,7 +59,14 @@ class LlmService:
                 user_query = msg.content
                 break
 
-        kb_context = await self._get_kb_context(user_query, k=3)
+        kb_context = await build_kb_context(
+            self.vector_store,
+            user_query,
+            k=3,
+            empty_notice=(
+                "\n\nDie Wissensbasis ist leer - es wurden noch keine Dokumente hochgeladen."
+            ),
+        )
 
         # Construct the conversation history for the model
         # The RAG service might expect a single 'query' and 'documents_text'

@@ -7,6 +7,7 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from app.api.schemas.calendar_schema import MeetingProposalSchema
+from app.api.schemas.knowledge_schema import KnowledgeDocumentSchema, KnowledgeSearchResultSchema
 from app.api.schemas.pipeline_schema import DoneEvent, ErrorEvent, PipelineEvent, PlanReadyEvent
 from app.services.scheduling_service import AvailabilityAugmentation
 
@@ -144,3 +145,57 @@ def test_stream_email_suggestion_ignores_style_rules_when_learning_is_off(
 
 def test_stream_email_suggestion_without_rules_has_no_style_section(client: TestClient) -> None:
     assert "GELERNTE STILVORGABEN" not in _capture_system_prompt(client)
+
+
+def test_stream_email_suggestion_passes_knowledge_base_excerpts(client: TestClient) -> None:
+    """Regression test: 'Antwort generieren' used to ignore the knowledge base, so a
+
+    question about e.g. the school rules could only be left open."""
+    captured: dict[str, str] = {}
+
+    async def _capturing_pipeline(_email: str, **kwargs: str) -> AsyncIterator[PipelineEvent]:
+        captured["extra_context"] = kwargs["extra_context"]
+        yield DoneEvent(final_reply="Fertige Antwort")
+
+    with (
+        patch("app.api.router.run_pipeline", _capturing_pipeline),
+        patch(
+            "app.services.vector_store_service.VectorStoreService.list_documents",
+            AsyncMock(return_value=[KnowledgeDocumentSchema(source="schulordnung.pdf")]),
+        ),
+        patch(
+            "app.services.vector_store_service.VectorStoreService.search",
+            AsyncMock(
+                return_value=[
+                    KnowledgeSearchResultSchema(
+                        content="Das Schulgelände darf in den Pausen nicht verlassen werden.",
+                        metadata={"source": "schulordnung.pdf"},
+                    )
+                ]
+            ),
+        ),
+    ):
+        _read_events(client, {"emailContent": "Darf ich in der Pause das Gelände verlassen?"})
+
+    assert (
+        "[Quelle: schulordnung.pdf] Das Schulgelände darf in den Pausen nicht verlassen werden."
+    ) in captured["extra_context"]
+
+
+def test_stream_email_suggestion_skips_empty_knowledge_base(client: TestClient) -> None:
+    captured: dict[str, str] = {}
+
+    async def _capturing_pipeline(_email: str, **kwargs: str) -> AsyncIterator[PipelineEvent]:
+        captured["extra_context"] = kwargs["extra_context"]
+        yield DoneEvent(final_reply="Fertige Antwort")
+
+    with (
+        patch("app.api.router.run_pipeline", _capturing_pipeline),
+        patch(
+            "app.services.vector_store_service.VectorStoreService.list_documents",
+            AsyncMock(return_value=[]),
+        ),
+    ):
+        _read_events(client, {"emailContent": "Testmail"})
+
+    assert "Wissensbasis" not in captured["extra_context"]

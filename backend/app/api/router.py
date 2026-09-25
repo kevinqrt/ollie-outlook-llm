@@ -76,6 +76,7 @@ from app.services.pipeline_settings_service import (
     SavedPromptNotFoundError,
 )
 from app.services.style_rules_service import StyleRuleNotFoundError, StyleRulesStore
+from app.services.vector_store_service import build_kb_context
 
 api_router = APIRouter()
 
@@ -169,6 +170,7 @@ async def stream_email_suggestion(
     scheduling_service: SchedulingServiceDep,
     pipeline_settings_service: PipelineSettingsServiceDep,
     style_rules_service: StyleRulesServiceDep,
+    vector_store_service: VectorStoreServiceDep,
 ) -> StreamingResponse:
     """Generate a reply suggestion, streaming each pipeline step as it completes.
 
@@ -179,10 +181,23 @@ async def stream_email_suggestion(
     The system prompt, tone and whether the pipeline may ask a clarifying question
     before answering come from the user-configurable pipeline settings; style
     rules learned from earlier user corrections are appended to the prompt.
+
+    Excerpts from the knowledge base matching the email are passed along as
+    additional context, so e.g. a question about the school rules is answered
+    from the uploaded document instead of left open.
     """
     model_choice = _resolve_model_choice(pipeline_settings_service)
     augmentation = await scheduling_service.augment_with_availability(
         payload.email_content, payload.attendees, model=model_choice.rag_model
+    )
+    kb_context = await build_kb_context(
+        vector_store_service,
+        payload.email_content,
+        k=4,
+        header=(
+            "Auszuege aus der Wissensbasis (nur verwenden, wenn sie zur Anfrage in der "
+            "E-Mail passen - sonst ignorieren):"
+        ),
     )
 
     system_prompt = _build_system_prompt(pipeline_settings_service, style_rules_service)
@@ -190,7 +205,7 @@ async def stream_email_suggestion(
     async def event_stream() -> AsyncIterator[str]:
         async for event in run_pipeline(
             payload.email_content,
-            extra_context=augmentation.context,
+            extra_context=f"{kb_context}{augmentation.context}",
             system_prompt=system_prompt,
             allow_clarifying_questions=pipeline_settings_service.get_allow_clarifying_questions(),
             clarification_answer=payload.clarification_answer,

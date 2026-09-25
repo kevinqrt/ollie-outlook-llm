@@ -111,3 +111,40 @@ class VectorStoreService:
         except Exception as e:
             logger.error("Error deleting document %s: %s", filename, e)
             return False
+
+
+async def build_kb_context(
+    vector_store: VectorStoreService,
+    query: str,
+    *,
+    k: int = 3,
+    header: str = "Relevante Auszuege aus der Wissensbasis:",
+    empty_notice: str = "",
+) -> str:
+    """Fetch and format knowledge base context for a prompt.
+
+    Besides the `k` excerpts most similar to `query`, the model also gets
+    the list of indexed documents and each excerpt's source file - without
+    them, a question about the knowledge base itself ("was liegt in der
+    Wissensbasis?") only yields a few unrelated, unlabelled excerpts and
+    the model can't tell they even come from the knowledge base.
+
+    `empty_notice` is returned when no documents are indexed; callers that
+    shouldn't mention the knowledge base at all in that case leave it empty.
+    """
+    if not query:
+        return ""
+
+    documents = await vector_store.list_documents()
+    if not documents:
+        return empty_notice
+    context = "\n\nDokumente in der Wissensbasis (vom Nutzer hochgeladene PDFs): " + ", ".join(
+        d.source for d in documents
+    )
+
+    results = await vector_store.search(query, k=k)
+    if results:
+        context += f"\n\n{header}\n" + "\n".join(
+            f"[Quelle: {r.metadata.get('source', 'unbekannt')}] {r.content}" for r in results
+        )
+    return context

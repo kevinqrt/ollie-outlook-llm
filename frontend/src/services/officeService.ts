@@ -1,4 +1,16 @@
 /**
+ * First name from an Outlook display name - "Sören Müller" -> "Sören",
+ * "Müller, Sören" -> "Sören". Empty for missing names or bare addresses.
+ */
+function firstName(displayName: string | undefined): string {
+  const name = displayName?.trim() ?? '';
+  if (!name || name.includes('@')) return '';
+  if (name.includes(','))
+    return name.split(',')[1]?.trim().split(/\s+/)[0] ?? '';
+  return name.split(/\s+/)[0];
+}
+
+/**
  * Infrastruktur-Service: Kapselt ausschliesslich OfficeJS-Interaktionen.
  */
 export class OfficeService {
@@ -157,6 +169,55 @@ export class OfficeService {
     ].filter(Boolean);
 
     return lines.length > 0 ? `${lines.join('\n')}\n\n` : '';
+  }
+
+  /**
+   * Counterpart and participants of the currently open message, used to
+   * pre-fill the Outlook "new event" form. `counterpartName` is the first
+   * name of the person the meeting is with - the sender in Read mode, the
+   * first To recipient in Compose mode. Unlike `getRecipients()`,
+   * `participants` also includes the sender in Read mode - when reading the
+   * other person's mail, they are the one the meeting was agreed with, while
+   * To only holds the user's own address. Kept out of `getRecipients()` on
+   * purpose, since that feeds the availability check, which would otherwise
+   * ask for every sender's calendar link.
+   */
+  public async getMeetingContext(): Promise<{
+    counterpartName: string;
+    participants: string[];
+  }> {
+    const item = Office.context.mailbox.item;
+    if (!item) return { counterpartName: '', participants: [] };
+
+    const ownAddress =
+      Office.context.mailbox.userProfile?.emailAddress?.toLowerCase();
+    const recipients = await this.getRecipients();
+
+    let counterpart: Office.EmailAddressDetails | undefined;
+    let sender: string | undefined;
+    if (this.isComposeMode()) {
+      const to = await this.getComposeRecipients(
+        (item as Office.MessageCompose).to
+      );
+      counterpart = to.find(
+        (r) => r.emailAddress?.toLowerCase() !== ownAddress
+      );
+    } else {
+      const readItem = item as Office.MessageRead;
+      counterpart = readItem.from;
+      sender = readItem.from?.emailAddress?.toLowerCase();
+    }
+
+    const participants = [
+      ...new Set([
+        ...(sender && sender !== ownAddress ? [sender] : []),
+        ...recipients,
+      ]),
+    ];
+    return {
+      counterpartName: firstName(counterpart?.displayName),
+      participants,
+    };
   }
 
   private async getComposeRecipients(

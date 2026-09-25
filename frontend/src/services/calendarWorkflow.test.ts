@@ -36,6 +36,7 @@ vi.mock('../api/generated', () => ({
 vi.mock('./officeService', () => ({
   officeService: {
     openUrl: vi.fn(),
+    getMeetingContext: vi.fn(),
   },
 }));
 
@@ -178,7 +179,7 @@ describe('calendarWorkflow', () => {
   });
 
   describe('buildCalendarComposeUrl', () => {
-    it('includes only start/end, no subject/location/attendees', () => {
+    it('includes only start/end when no details are given', () => {
       const url = buildCalendarComposeUrl(
         new Date('2026-08-06T16:30:00Z'),
         new Date('2026-08-06T17:00:00Z')
@@ -195,22 +196,72 @@ describe('calendarWorkflow', () => {
       );
       expect(parsed.searchParams.get('enddt')).toBe('2026-08-06T17:00:00.000Z');
       expect(parsed.searchParams.has('subject')).toBe(false);
-      expect(parsed.searchParams.has('location')).toBe(false);
       expect(parsed.searchParams.has('body')).toBe(false);
-      expect(parsed.searchParams.has('attendees')).toBe(false);
+      expect(parsed.searchParams.has('to')).toBe(false);
+    });
+
+    it('adds subject, body and comma-separated attendees when given', () => {
+      const parsed = new URL(
+        buildCalendarComposeUrl(
+          new Date('2026-08-06T16:30:00Z'),
+          new Date('2026-08-06T17:00:00Z'),
+          {
+            subject: 'Projektbesprechung',
+            body: 'Agenda folgt.',
+            attendees: ['soeren@example.com', 'alice@example.com'],
+          }
+        )
+      );
+
+      expect(parsed.searchParams.get('subject')).toBe('Projektbesprechung');
+      expect(parsed.searchParams.get('body')).toBe('Agenda folgt.');
+      expect(parsed.searchParams.get('to')).toBe(
+        'soeren@example.com,alice@example.com'
+      );
     });
   });
 
   describe('openCalendarComposeWindow', () => {
-    it('opens the compose URL built from the proposal start/end', () => {
-      openCalendarComposeWindow(PROPOSAL);
+    const openedParams = () =>
+      new URL(vi.mocked(officeService.openUrl).mock.calls[0][0]).searchParams;
 
-      expect(officeService.openUrl).toHaveBeenCalledWith(
-        buildCalendarComposeUrl(
-          new Date('2026-08-06T16:30:00Z'),
-          new Date('2026-08-06T17:00:00Z')
-        )
+    it('titles it "Termin mit <Vorname>" and adds the mail participants when the proposal has only the default subject', async () => {
+      vi.mocked(officeService.getMeetingContext).mockResolvedValue({
+        counterpartName: 'Sören',
+        participants: ['soeren@example.com', 'alice@example.com'],
+      });
+
+      await openCalendarComposeWindow(PROPOSAL);
+
+      const params = openedParams();
+      expect(params.get('startdt')).toBe('2026-08-06T16:30:00.000Z');
+      expect(params.get('enddt')).toBe('2026-08-06T17:00:00.000Z');
+      expect(params.get('subject')).toBe('Termin mit Sören');
+      expect(params.get('body')).toBe('Kurze Beschreibung.');
+      expect(params.get('to')).toBe('alice@example.com,soeren@example.com');
+    });
+
+    it('prefers a topic the backend extracted over "Termin mit <Vorname>"', async () => {
+      vi.mocked(officeService.getMeetingContext).mockResolvedValue({
+        counterpartName: 'Sören',
+        participants: [],
+      });
+
+      await openCalendarComposeWindow({ ...PROPOSAL, subject: 'Kickoff' });
+
+      expect(openedParams().get('subject')).toBe('Kickoff');
+    });
+
+    it('falls back to the proposal alone when the mail context is unavailable', async () => {
+      vi.mocked(officeService.getMeetingContext).mockRejectedValue(
+        new Error('Kein Element ausgewählt.')
       );
+
+      await openCalendarComposeWindow(PROPOSAL);
+
+      const params = openedParams();
+      expect(params.get('subject')).toBe('Termin');
+      expect(params.get('to')).toBe('alice@example.com');
     });
   });
 });

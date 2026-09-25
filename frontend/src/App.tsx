@@ -144,9 +144,9 @@ function App() {
     }
   }
 
-  function handleOpenAppointment(proposal: MeetingProposalSchema) {
+  async function handleOpenAppointment(proposal: MeetingProposalSchema) {
     try {
-      openCalendarComposeWindow(proposal);
+      await openCalendarComposeWindow(proposal);
     } catch (error) {
       const msg =
         error instanceof Error

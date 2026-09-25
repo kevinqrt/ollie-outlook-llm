@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -5,6 +6,7 @@ import pytest
 
 from app.api.schemas.calendar_schema import (
     CalendarEventSchema,
+    MeetingProposalSchema,
     MeetingTimeSuggestionSchema,
     TimeSlotSchema,
 )
@@ -740,3 +742,80 @@ async def test_augment_returns_empty_when_neither_meeting_nor_calendar_query(
 
     assert result == _empty()
     mock_calendar.list_events.assert_not_called()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "subject",
+    ["Ja, wir koennen uns treffen", "Passt Ihnen Montag?", " ".join(["Wort"] * 9), None],
+)
+async def test_augment_proposal_rejects_sentence_like_subject(
+    scheduling_service, mock_llm, mock_calendar, subject
+):
+    mock_llm.chat = AsyncMock(
+        return_value=json.dumps(
+            {"is_meeting_request": True, "duration_minutes": 30, "subject": subject}
+        )
+    )
+    mock_calendar.get_availability = AsyncMock(return_value=[SLOT])
+
+    result = await scheduling_service.augment_with_availability("Koennen wir uns treffen?")
+
+    assert result.proposal is not None
+    assert result.proposal.subject == "Termin"
+
+
+@pytest.mark.anyio
+async def test_augment_keeps_offered_slots(scheduling_service, mock_llm, mock_calendar):
+    mock_llm.chat = AsyncMock(return_value='{"is_meeting_request": true, "duration_minutes": 30}')
+    mock_calendar.get_availability = AsyncMock(return_value=[SLOT, SLOT_2])
+
+    result = await scheduling_service.augment_with_availability("Koennen wir uns treffen?")
+
+    assert result.slots == [(SLOT.start, SLOT.end), (SLOT_2.start, SLOT_2.end)]
+
+
+def _augmentation_with_two_slots() -> AvailabilityAugmentation:
+    # SLOT = Mo 03.08. 11:00 local, SLOT_2 = Mo 03.08. 12:00 local (CEST).
+    return AvailabilityAugmentation(
+        proposal=MeetingProposalSchema(subject="Termin", start=SLOT.start, end=SLOT.end),
+        slots=[(SLOT.start, SLOT.end), (SLOT_2.start, SLOT_2.end)],
+    )
+
+
+@pytest.mark.parametrize(
+    "reply", ["Gerne um 12:00 Uhr.", "Gerne um 12 Uhr am Montag.", "Treffen wir uns 12.00 Uhr?"]
+)
+def test_proposal_matching_reply_picks_the_named_slot(reply):
+    proposal = _augmentation_with_two_slots().proposal_matching_reply(reply)
+
+    assert proposal is not None
+    assert proposal.start == SLOT_2.start
+    assert proposal.end == SLOT_2.end
+
+
+def test_proposal_matching_reply_does_not_match_inside_other_times():
+    # "11:30" must not count as the 11:00 slot's "11 Uhr" and "112:00" isn't 12:00.
+    proposal = _augmentation_with_two_slots().proposal_matching_reply("Um 11:30 Uhr.")
+
+    assert proposal is not None
+    assert proposal.start == SLOT.start
+
+
+def test_proposal_matching_reply_falls_back_to_first_slot():
+    augmentation = _augmentation_with_two_slots()
+
+    assert augmentation.proposal_matching_reply("Danke!", None) == augmentation.proposal
+
+
+def test_proposal_matching_reply_uses_later_text_if_reply_names_no_slot():
+    proposal = _augmentation_with_two_slots().proposal_matching_reply(
+        "Das passt mir gut.", "Montag, 03.08.2026 12:00-12:30 Uhr"
+    )
+
+    assert proposal is not None
+    assert proposal.start == SLOT_2.start
+
+
+def test_proposal_matching_reply_without_proposal_is_none():
+    assert AvailabilityAugmentation().proposal_matching_reply("12:00 Uhr") is None

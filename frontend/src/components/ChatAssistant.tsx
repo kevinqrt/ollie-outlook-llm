@@ -139,9 +139,9 @@ export function ChatAssistant() {
   );
 
   const handleOpenAppointment = useCallback(
-    (proposal: MeetingProposalSchema) => {
+    async (proposal: MeetingProposalSchema) => {
       try {
-        openCalendarComposeWindow(proposal);
+        await openCalendarComposeWindow(proposal);
       } catch (error) {
         const msg =
           error instanceof Error

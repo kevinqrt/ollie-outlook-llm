@@ -198,7 +198,10 @@ async def stream_email_suggestion(
         ):
             if isinstance(event, DoneEvent):
                 event = DoneEvent(
-                    final_reply=event.final_reply, meeting_proposal=augmentation.proposal
+                    final_reply=event.final_reply,
+                    meeting_proposal=augmentation.proposal_matching_reply(
+                        event.final_reply, payload.clarification_answer
+                    ),
                 )
             yield f"data: {event.model_dump_json(by_alias=True)}\n\n"
 

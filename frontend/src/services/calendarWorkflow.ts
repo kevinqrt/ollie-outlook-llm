@@ -100,31 +100,81 @@ export async function removeKnownCalendar(
   return response.data?.calendars ?? [];
 }
 
+/** Default subject the backend uses when none was found in the text. */
+const DEFAULT_PROPOSAL_SUBJECT = 'Termin';
+
+export interface CalendarComposeDetails {
+  subject?: string;
+  body?: string;
+  attendees?: string[];
+}
+
 /**
  * Builds an Outlook Web deep link that opens the calendar's "new event"
- * compose page pre-filled with only the given start/end. Subject, location,
- * body and attendees are intentionally left out so the user fills them in
- * manually - this is a real, editable Outlook form, not an auto-created
- * event, and it works regardless of the add-in's Read/Compose mode since it
- * just opens a browser window rather than touching the mailbox item.
+ * compose page pre-filled with start/end and - if given - subject, body and
+ * attendees. It's a real, editable Outlook form, not an auto-created event,
+ * and it works regardless of the add-in's Read/Compose mode since it just
+ * opens a browser window rather than touching the mailbox item.
  */
-export function buildCalendarComposeUrl(start: Date, end: Date): string {
+export function buildCalendarComposeUrl(
+  start: Date,
+  end: Date,
+  details: CalendarComposeDetails = {}
+): string {
   const params = new URLSearchParams({
     path: '/calendar/action/compose',
     rru: 'addevent',
     startdt: start.toISOString(),
     enddt: end.toISOString(),
   });
+  if (details.subject) params.set('subject', details.subject);
+  if (details.body) params.set('body', details.body);
+  if (details.attendees?.length) params.set('to', details.attendees.join(','));
   return `${OWA_COMPOSE_BASE_URL}?${params.toString()}`;
 }
 
-/** Opens the calendar compose window for a meeting proposal's start/end. */
-export function openCalendarComposeWindow(
+/**
+ * Opens the calendar compose window for a meeting proposal, pre-filled with a
+ * title and the people from the open mail. The title is the topic the backend
+ * extracted if it found one, otherwise "Termin mit <Vorname>"; the attendees
+ * are the proposal's plus the mail's sender and recipients.
+ */
+export async function openCalendarComposeWindow(
   proposal: MeetingProposalSchema
-): void {
+): Promise<void> {
+  let counterpartName = '';
+  let participants: string[] = [];
+  try {
+    ({ counterpartName, participants } =
+      await officeService.getMeetingContext());
+  } catch (error) {
+    // No mail context (e.g. no item open) - fall back to the proposal alone.
+    console.warn('Could not read meeting context from mail:', error);
+  }
+
+  const proposalSubject =
+    proposal.subject && proposal.subject !== DEFAULT_PROPOSAL_SUBJECT
+      ? proposal.subject
+      : '';
+  const fallbackSubject = counterpartName
+    ? `${DEFAULT_PROPOSAL_SUBJECT} mit ${counterpartName}`
+    : DEFAULT_PROPOSAL_SUBJECT;
+  const attendees = [
+    ...new Set(
+      [...(proposal.attendees ?? []), ...participants].map((a) =>
+        a.toLowerCase()
+      )
+    ),
+  ];
+
   const url = buildCalendarComposeUrl(
     new Date(proposal.start),
-    new Date(proposal.end)
+    new Date(proposal.end),
+    {
+      subject: proposalSubject || fallbackSubject,
+      body: proposal.body,
+      attendees,
+    }
   );
   officeService.openUrl(url);
 }

@@ -84,6 +84,32 @@ def test_stream_email_suggestion_includes_meeting_proposal(client: TestClient) -
     assert done_event["meetingProposal"]["subject"] == "Sprint Planning"
 
 
+def test_stream_email_suggestion_proposal_follows_time_in_reply(client: TestClient) -> None:
+    """The proposal moves to the offered slot the final reply names - e.g. the
+
+    second option picked in a clarifying question - instead of always the first.
+    """
+    first = (datetime(2026, 8, 10, 9, 0, tzinfo=UTC), datetime(2026, 8, 10, 9, 30, tzinfo=UTC))
+    second = (datetime(2026, 8, 10, 12, 0, tzinfo=UTC), datetime(2026, 8, 10, 12, 30, tzinfo=UTC))
+    proposal = MeetingProposalSchema(subject="Termin", start=first[0], end=first[1])
+    augmentation = AvailabilityAugmentation(proposal=proposal, slots=[first, second])
+
+    async def _pipeline(_email: str, **_kwargs: str) -> AsyncIterator[PipelineEvent]:
+        # 12:00 UTC is 14:00 in Berlin (CEST).
+        yield DoneEvent(final_reply="Gerne am Montag um 14:00 Uhr.")
+
+    with (
+        patch("app.api.router.run_pipeline", _pipeline),
+        patch(
+            "app.services.scheduling_service.SchedulingService.augment_with_availability"
+        ) as mock_augment,
+    ):
+        mock_augment.return_value = augmentation
+        events = _read_events(client, {"emailContent": "Treffen am Montag?"})
+
+    assert events[-1]["meetingProposal"]["start"].startswith("2026-08-10T12:00:00")
+
+
 def _capture_system_prompt(client: TestClient) -> str:
     captured: dict[str, str] = {}
 

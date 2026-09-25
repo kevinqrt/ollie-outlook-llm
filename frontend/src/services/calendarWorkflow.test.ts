@@ -237,7 +237,9 @@ describe('calendarWorkflow', () => {
       expect(params.get('startdt')).toBe('2026-08-06T16:30:00.000Z');
       expect(params.get('enddt')).toBe('2026-08-06T17:00:00.000Z');
       expect(params.get('subject')).toBe('Termin mit Sören');
-      expect(params.get('body')).toBe('Kurze Beschreibung.');
+      expect(params.get('body')).toBe(
+        'Termin mit Sören, vereinbart per E-Mail.'
+      );
       expect(params.get('to')).toBe('alice@example.com,soeren@example.com');
     });
 
@@ -261,6 +263,7 @@ describe('calendarWorkflow', () => {
 
       const params = openedParams();
       expect(params.get('subject')).toBe('Termin');
+      expect(params.has('body')).toBe(false);
       expect(params.get('to')).toBe('alice@example.com');
     });
   });

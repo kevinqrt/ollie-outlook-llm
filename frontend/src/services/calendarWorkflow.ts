@@ -137,7 +137,10 @@ export function buildCalendarComposeUrl(
  * Opens the calendar compose window for a meeting proposal, pre-filled with a
  * title and the people from the open mail. The title is the topic the backend
  * extracted if it found one, otherwise "Termin mit <Vorname>"; the attendees
- * are the proposal's plus the mail's sender and recipients.
+ * are the proposal's plus the mail's sender and recipients. The proposal's
+ * LLM-written `body` is deliberately not used as description - the small
+ * model's text was often not even a full sentence - a fixed sentence naming
+ * the counterpart is used instead.
  */
 export async function openCalendarComposeWindow(
   proposal: MeetingProposalSchema
@@ -172,7 +175,9 @@ export async function openCalendarComposeWindow(
     new Date(proposal.end),
     {
       subject: proposalSubject || fallbackSubject,
-      body: proposal.body,
+      body: counterpartName
+        ? `${DEFAULT_PROPOSAL_SUBJECT} mit ${counterpartName}, vereinbart per E-Mail.`
+        : '',
       attendees,
     }
   );

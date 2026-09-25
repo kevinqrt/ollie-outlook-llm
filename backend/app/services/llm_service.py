@@ -40,15 +40,32 @@ class LlmService:
         self,
         query: str,
         k: int = 3,
-        header: str = "Relevant Information from Knowledge Base:",
+        header: str = "Relevante Auszuege aus der Wissensbasis:",
     ) -> str:
-        """Helper to fetch and format context from the vector store."""
+        """Fetch and format context from the vector store.
+
+        Besides the `k` excerpts most similar to `query`, the model also gets
+        the list of indexed documents and each excerpt's source file - without
+        them, a question about the knowledge base itself ("was liegt in der
+        Wissensbasis?") only yields a few unrelated, unlabelled excerpts and
+        the model can't tell they even come from the knowledge base.
+        """
         if not query:
             return ""
+
+        documents = await self.vector_store.list_documents()
+        if not documents:
+            return "\n\nDie Wissensbasis ist leer - es wurden noch keine Dokumente hochgeladen."
+        context = "\n\nDokumente in der Wissensbasis (vom Nutzer hochgeladene PDFs): " + ", ".join(
+            d.source for d in documents
+        )
+
         results = await self.vector_store.search(query, k=k)
-        if not results:
-            return ""
-        return f"\n\n{header}\n" + "\n".join([r.content for r in results])
+        if results:
+            context += f"\n\n{header}\n" + "\n".join(
+                f"[Quelle: {r.metadata.get('source', 'unbekannt')}] {r.content}" for r in results
+            )
+        return context
 
     async def chat(
         self,

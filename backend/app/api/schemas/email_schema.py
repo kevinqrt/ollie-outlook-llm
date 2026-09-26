@@ -19,6 +19,16 @@ class EmailSuggestionRequestSchema(BaseSchema):
         "everyone's calendar availability for meeting-time suggestions.",
         examples=[["alice@contoso.com"]],
     )
+    conversation_id: str | None = Field(
+        default=None,
+        description="Outlook conversation id of the open mail, used to load earlier mails "
+        "of the same thread as context (Graph backend only).",
+    )
+    sender: str | None = Field(
+        default=None,
+        description="Sender address of the open mail - fallback for loading earlier mails "
+        "when the conversation id is unavailable.",
+    )
     clarification_answer: str | None = Field(
         default=None,
         description="The user's answer to a previous 'clarification_needed' pipeline event, "

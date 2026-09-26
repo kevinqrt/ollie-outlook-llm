@@ -22,6 +22,12 @@ export type AuthStatusSchema = {
      * Authenticated
      */
     authenticated: boolean;
+    /**
+     * Backend
+     *
+     * Active calendar backend - the Graph login only applies to 'graph'.
+     */
+    backend?: 'ics' | 'graph';
 };
 
 /**
@@ -82,6 +88,22 @@ export type CalendarEventSchema = {
      * Isorganizer
      */
     isOrganizer?: boolean;
+    /**
+     * Location
+     */
+    location?: string | null;
+    /**
+     * Isallday
+     */
+    isAllDay?: boolean;
+    /**
+     * Attendees
+     */
+    attendees?: Array<string>;
+    /**
+     * Weblink
+     */
+    webLink?: string | null;
 };
 
 /**
@@ -193,6 +215,18 @@ export type EmailSuggestionRequestSchema = {
      * Email addresses of the other recipients (To/Cc), used to check everyone's calendar availability for meeting-time suggestions.
      */
     attendees?: Array<string>;
+    /**
+     * Conversationid
+     *
+     * Outlook conversation id of the open mail, used to load earlier mails of the same thread as context (Graph backend only).
+     */
+    conversationId?: string | null;
+    /**
+     * Sender
+     *
+     * Sender address of the open mail - fallback for loading earlier mails when the conversation id is unavailable.
+     */
+    sender?: string | null;
     /**
      * Clarificationanswer
      *
@@ -1329,6 +1363,35 @@ export type GetCalendarEventsResponses = {
 };
 
 export type GetCalendarEventsResponse = GetCalendarEventsResponses[keyof GetCalendarEventsResponses];
+
+export type CreateCalendarEventData = {
+    body: MeetingProposalSchema;
+    path?: never;
+    query?: never;
+    url: '/calendar/events';
+};
+
+export type CreateCalendarEventErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Calendar cannot create events
+     */
+    503: ErrorResponseSchema;
+};
+
+export type CreateCalendarEventError = CreateCalendarEventErrors[keyof CreateCalendarEventErrors];
+
+export type CreateCalendarEventResponses = {
+    /**
+     * Successful Response
+     */
+    201: CalendarEventSchema;
+};
+
+export type CreateCalendarEventResponse = CreateCalendarEventResponses[keyof CreateCalendarEventResponses];
 
 export type PostCalendarMeetingTimesData = {
     body: FindMeetingTimesRequestSchema;

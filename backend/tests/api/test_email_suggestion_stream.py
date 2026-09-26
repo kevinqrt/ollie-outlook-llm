@@ -7,6 +7,7 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from app.api.schemas.calendar_schema import MeetingProposalSchema
+from app.api.schemas.knowledge_schema import KnowledgeDocumentSchema, KnowledgeSearchResultSchema
 from app.api.schemas.pipeline_schema import DoneEvent, ErrorEvent, PipelineEvent, PlanReadyEvent
 from app.services.scheduling_service import AvailabilityAugmentation
 
@@ -84,6 +85,32 @@ def test_stream_email_suggestion_includes_meeting_proposal(client: TestClient) -
     assert done_event["meetingProposal"]["subject"] == "Sprint Planning"
 
 
+def test_stream_email_suggestion_proposal_follows_time_in_reply(client: TestClient) -> None:
+    """The proposal moves to the offered slot the final reply names - e.g. the
+
+    second option picked in a clarifying question - instead of always the first.
+    """
+    first = (datetime(2026, 8, 10, 9, 0, tzinfo=UTC), datetime(2026, 8, 10, 9, 30, tzinfo=UTC))
+    second = (datetime(2026, 8, 10, 12, 0, tzinfo=UTC), datetime(2026, 8, 10, 12, 30, tzinfo=UTC))
+    proposal = MeetingProposalSchema(subject="Termin", start=first[0], end=first[1])
+    augmentation = AvailabilityAugmentation(proposal=proposal, slots=[first, second])
+
+    async def _pipeline(_email: str, **_kwargs: str) -> AsyncIterator[PipelineEvent]:
+        # 12:00 UTC is 14:00 in Berlin (CEST).
+        yield DoneEvent(final_reply="Gerne am Montag um 14:00 Uhr.")
+
+    with (
+        patch("app.api.router.run_pipeline", _pipeline),
+        patch(
+            "app.services.scheduling_service.SchedulingService.augment_with_availability"
+        ) as mock_augment,
+    ):
+        mock_augment.return_value = augmentation
+        events = _read_events(client, {"emailContent": "Treffen am Montag?"})
+
+    assert events[-1]["meetingProposal"]["start"].startswith("2026-08-10T12:00:00")
+
+
 def _capture_system_prompt(client: TestClient) -> str:
     captured: dict[str, str] = {}
 
@@ -118,3 +145,90 @@ def test_stream_email_suggestion_ignores_style_rules_when_learning_is_off(
 
 def test_stream_email_suggestion_without_rules_has_no_style_section(client: TestClient) -> None:
     assert "GELERNTE STILVORGABEN" not in _capture_system_prompt(client)
+
+
+def test_stream_email_suggestion_passes_knowledge_base_excerpts(client: TestClient) -> None:
+    """Regression test: 'Antwort generieren' used to ignore the knowledge base, so a
+
+    question about e.g. the school rules could only be left open."""
+    captured: dict[str, str] = {}
+
+    async def _capturing_pipeline(_email: str, **kwargs: str) -> AsyncIterator[PipelineEvent]:
+        captured["extra_context"] = kwargs["extra_context"]
+        yield DoneEvent(final_reply="Fertige Antwort")
+
+    with (
+        patch("app.api.router.run_pipeline", _capturing_pipeline),
+        patch(
+            "app.services.vector_store_service.VectorStoreService.list_documents",
+            AsyncMock(return_value=[KnowledgeDocumentSchema(source="schulordnung.pdf")]),
+        ),
+        patch(
+            "app.services.vector_store_service.VectorStoreService.search",
+            AsyncMock(
+                return_value=[
+                    KnowledgeSearchResultSchema(
+                        content="Das Schulgelände darf in den Pausen nicht verlassen werden.",
+                        metadata={"source": "schulordnung.pdf"},
+                    )
+                ]
+            ),
+        ),
+    ):
+        _read_events(client, {"emailContent": "Darf ich in der Pause das Gelände verlassen?"})
+
+    assert (
+        "[Quelle: schulordnung.pdf] Das Schulgelände darf in den Pausen nicht verlassen werden."
+    ) in captured["extra_context"]
+
+
+def test_stream_email_suggestion_skips_empty_knowledge_base(client: TestClient) -> None:
+    captured: dict[str, str] = {}
+
+    async def _capturing_pipeline(_email: str, **kwargs: str) -> AsyncIterator[PipelineEvent]:
+        captured["extra_context"] = kwargs["extra_context"]
+        yield DoneEvent(final_reply="Fertige Antwort")
+
+    with (
+        patch("app.api.router.run_pipeline", _capturing_pipeline),
+        patch(
+            "app.services.vector_store_service.VectorStoreService.list_documents",
+            AsyncMock(return_value=[]),
+        ),
+    ):
+        _read_events(client, {"emailContent": "Testmail"})
+
+    assert "Wissensbasis" not in captured["extra_context"]
+
+
+def test_stream_email_suggestion_includes_earlier_mails_with_graph_backend(
+    graph_client: TestClient,
+) -> None:
+    captured: dict = {}
+
+    async def _capturing_pipeline(_email_text: str, **kwargs: str) -> AsyncIterator[PipelineEvent]:
+        captured.update(kwargs)
+        yield DoneEvent(final_reply="Fertige Antwort")
+
+    with (
+        patch("app.api.router.run_pipeline", _capturing_pipeline),
+        patch(
+            "app.services.scheduling_service.SchedulingService.augment_with_availability"
+        ) as mock_augment,
+        patch(
+            "app.services.mail_context_service.MailContextService.build_reply_context"
+        ) as mock_reply_context,
+    ):
+        mock_augment.return_value = AvailabilityAugmentation()
+        mock_reply_context.return_value = "\n\nFruehere Mail von Max"
+        _read_events(
+            graph_client,
+            {
+                "emailContent": "Wie besprochen?",
+                "conversationId": "conv-1",
+                "sender": "max@example.com",
+            },
+        )
+
+    mock_reply_context.assert_called_once_with("conv-1", "max@example.com")
+    assert "\n\nFruehere Mail von Max" in captured["extra_context"]

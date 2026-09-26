@@ -1,14 +1,15 @@
 import json
 import logging
 import re
+import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from app.api.schemas.calendar_schema import MeetingProposalSchema
+from app.api.schemas.calendar_schema import CalendarEventSchema, MeetingProposalSchema
 from app.api.schemas.chat_schema import ChatMessageSchema
-from app.core.datetime_utils import LOCAL_TZ, format_datetime_de
+from app.core.datetime_utils import LOCAL_TZ, WEEKDAYS_DE, format_datetime_de
 from app.services.availability import CalendarServiceError
 from app.services.calendar_mock_service import MockCalendarService
 from app.services.graph_auth_service import GraphAuthError
@@ -27,12 +28,16 @@ _CLASSIFICATION_PROMPT = (
     "Termine habe ich diese Woche'), ohne einen neuen Termin vereinbaren zu wollen? Antworte "
     'AUSSCHLIESSLICH mit einem JSON-Objekt der Form {{"is_meeting_request": true|false, '
     '"is_calendar_query": true|false, "duration_minutes": <Zahl>, '
-    '"subject": <kurzer Betreff oder null>, "description": <kurze Beschreibung oder null>, '
+    '"subject": <kurzer Termintitel oder null>, "description": <kurze Beschreibung oder null>, '
     '"earliest_date": <Datum im Format JJJJ-MM-TT oder null>, '
     '"time_of_day": <"vormittags"|"mittags"|"nachmittags"|"abends"|null>}} '
-    "ohne weiteren Text. Falls keine Dauer erkennbar ist, verwende 30. Setze subject/description "
-    "nur, wenn sie explizit im Text stehen - sonst null. Setze earliest_date auf den fruehesten "
-    "Tag, um den es in der Nachricht geht (bei einem neuen Termin: ab wann er stattfinden soll; "
+    "ohne weiteren Text. Falls keine Dauer erkennbar ist, verwende 30. Setze subject auf einen "
+    "kurzen Titel fuer den Kalendereintrag (2-6 Woerter), der das THEMA des Treffens nennt, z.B. "
+    '"Abstimmung Projektplan" oder "Budget-Review" - KEIN ganzer Satz, keine Zusage oder '
+    "Grussformel, nicht der E-Mail-Betreff; null, wenn kein Thema erkennbar ist. Setze "
+    "description nur, wenn sie explizit im Text steht - sonst null. Setze earliest_date auf "
+    "den fruehesten Tag, um den es in der Nachricht geht (bei einem neuen Termin: ab wann er "
+    "stattfinden soll; "
     "bei einer Abfrage bestehender Termine: fuer welchen Tag/Zeitraum), abgeleitet aus "
     'Zeitangaben in der Nachricht (z.B. "naechste Woche" -> Montag der Folgewoche, "Freitag" -> '
     'naechster Freitag, "in 3 Tagen" -> entsprechendes Datum, "heute" -> heutiges Datum) relativ '
@@ -46,9 +51,13 @@ _EMAIL_REGEX = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 LOOKAHEAD_DAYS = 7
 DEFAULT_DURATION_MINUTES = 30
 DEFAULT_SUBJECT = "Termin"
+MAX_SUBJECT_WORDS = 8
 MAX_SUGGESTED_SLOTS = 3
 MAX_LISTED_EVENTS = 10
 BUSINESS_HOURS_START = 9
+OVERVIEW_DAYS = 14
+MAX_OVERVIEW_EVENTS = 60
+OVERVIEW_CACHE_SECONDS = 300
 
 # Local (Europe/Berlin) hour-of-day ranges for each recognized time-of-day label.
 TIME_OF_DAY_RANGES: dict[str, tuple[int, int]] = {
@@ -145,16 +154,99 @@ def _merge_attendees(explicit: list[str] | None, text: str) -> list[str]:
     return merged
 
 
+def _sanitize_subject(subject: Any) -> str:
+    """Use the classified subject as calendar title only if it looks like one.
+
+    The (small) model sometimes returns a whole sentence such as "Ja, wir
+    koennen uns treffen" instead of a topic - anything that long, containing a
+    comma or ending like a sentence falls back to `DEFAULT_SUBJECT`.
+    """
+    if not isinstance(subject, str):
+        return DEFAULT_SUBJECT
+    cleaned = subject.strip().strip("\"'")
+    if (
+        not cleaned
+        or len(cleaned.split()) > MAX_SUBJECT_WORDS
+        or "," in cleaned
+        or cleaned.endswith(("?", "!", "."))
+    ):
+        return DEFAULT_SUBJECT
+    return cleaned
+
+
+def _slot_match_score(slot_start: datetime, text: str) -> int:
+    """How clearly `text` refers to a slot starting at `slot_start`.
+
+    The start time ("14:00", "14 Uhr", "14.00 Uhr") counts double, the date
+    ("26.09.") or German weekday name once - so a reply naming only a time
+    still picks the right slot, and a matching day breaks ties between slots
+    with the same time on different days.
+    """
+    local = slot_start.astimezone(LOCAL_TZ)
+    hour, minute = local.hour, local.minute
+    time_patterns = [rf"(?<!\d)0?{hour}[:.]{minute:02d}(?!\d)"]
+    if minute == 0:
+        time_patterns.append(rf"(?<![\d:.]){hour}\s*Uhr")
+
+    score = 0
+    if any(re.search(pattern, text) for pattern in time_patterns):
+        score += 2
+    date_pattern = rf"(?<!\d)0?{local.day}\.0?{local.month}\."
+    if re.search(date_pattern, text) or WEEKDAYS_DE[local.weekday()].lower() in text.lower():
+        score += 1
+    return score
+
+
 @dataclass
 class AvailabilityAugmentation:
     """Result of checking calendar availability for a piece of text.
 
     `context` is extra prompt context to fold into the LLM request; `proposal`
-    is a concrete, ready-to-open meeting suggestion (or None if not applicable).
+    is a concrete, ready-to-open meeting suggestion (or None if not applicable),
+    initially for the first of the offered `slots`.
     """
 
     context: str = ""
     proposal: MeetingProposalSchema | None = None
+    slots: list[tuple[datetime, datetime]] = field(default_factory=list)
+
+    def proposal_matching_reply(self, *texts: str | None) -> MeetingProposalSchema | None:
+        """The proposal, moved to the offered slot the reply actually names.
+
+        The LLM (or the user, via a clarifying question) may pick any of the
+        offered slots, not necessarily the first - without this the calendar
+        form would open at a different time than the one written in the mail.
+        Texts are checked in order and the first one naming a slot wins;
+        falls back to the unchanged proposal if none does.
+        """
+        if self.proposal is None:
+            return None
+        for text in texts:
+            if not text:
+                continue
+            scores = [_slot_match_score(start, text) for start, _ in self.slots]
+            if scores and max(scores) > 0:
+                start, end = self.slots[scores.index(max(scores))]
+                return self.proposal.model_copy(update={"start": start, "end": end})
+        return self.proposal
+
+
+def _format_overview_line(event: CalendarEventSchema) -> str:
+    if event.is_all_day:
+        # Graph returns all-day events as floating midnight, so the UTC date is
+        # the calendar date - converting to local time would not change it
+        # anyway, but it would show a meaningless 02:00.
+        day = event.start.date()
+        when = f"{WEEKDAYS_DE[day.weekday()]}, {day.strftime('%d.%m.%Y')} ganztaegig"
+    else:
+        when = (
+            f"{format_datetime_de(event.start)}"
+            f"-{event.end.astimezone(LOCAL_TZ).strftime('%H:%M')} Uhr"
+        )
+    line = f"- {when}: {event.subject}"
+    if event.location:
+        line += f" ({event.location})"
+    return line
 
 
 class SchedulingService:
@@ -170,6 +262,47 @@ class SchedulingService:
     def __init__(self, llm_service: LlmService, calendar_service: CalendarService) -> None:
         self._llm_service = llm_service
         self._calendar_service = calendar_service
+        self._overview_cache: tuple[float, str] | None = None
+
+    async def build_calendar_overview(self) -> str:
+        """Upcoming events (today plus OVERVIEW_DAYS) as compact prompt context.
+
+        Added to every chat message, so the assistant knows the user's calendar
+        even when a message isn't detected as a calendar question. Cached for
+        OVERVIEW_CACHE_SECONDS so not every message hits the calendar backend.
+        Returns "" if the calendar is not connected or unavailable.
+        """
+        if (
+            self._overview_cache is not None
+            and time.monotonic() - self._overview_cache[0] < OVERVIEW_CACHE_SECONDS
+        ):
+            return self._overview_cache[1]
+
+        today = datetime.now(LOCAL_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+        window_start = today.astimezone(UTC)
+        window_end = window_start + timedelta(days=OVERVIEW_DAYS)
+        try:
+            events = await self._calendar_service.list_events(window_start, window_end)
+        except (CalendarServiceError, GraphAuthError):
+            logger.info("Skipping calendar overview: calendar unavailable.")
+            return ""
+
+        sorted_events = sorted(events, key=lambda e: e.start)
+        lines = [_format_overview_line(event) for event in sorted_events[:MAX_OVERVIEW_EVENTS]]
+        remaining = len(sorted_events) - MAX_OVERVIEW_EVENTS
+        if remaining > 0:
+            lines.append(f"- (und {remaining} weitere Termine)")
+        body = "\n".join(lines) if lines else "- keine Termine"
+        overview = (
+            f"\n\nKalender des Nutzers fuer die naechsten {OVERVIEW_DAYS} Tage "
+            f"(nutze ihn, wenn die Frage Termine oder Zeitplanung betrifft):\n{body}"
+        )
+        self._overview_cache = (time.monotonic(), overview)
+        return overview
+
+    def invalidate_calendar_overview(self) -> None:
+        """Drop the cached overview, e.g. after an event was created."""
+        self._overview_cache = None
 
     async def augment_with_availability(
         self, text: str, attendees: list[str] | None = None, model: str | None = None
@@ -267,13 +400,15 @@ class SchedulingService:
 
         first_start, first_end = slots[0]
         proposal = MeetingProposalSchema(
-            subject=str(detection.get("subject") or DEFAULT_SUBJECT),
+            subject=_sanitize_subject(detection.get("subject")),
             body=str(detection.get("description") or ""),
             start=first_start,
             end=first_end,
             attendees=all_attendees,
         )
-        return AvailabilityAugmentation(context=context, proposal=proposal)
+        return AvailabilityAugmentation(
+            context=context, proposal=proposal, slots=slots[:MAX_SUGGESTED_SLOTS]
+        )
 
     async def _augment_with_calendar_listing(
         self, detection: dict[str, Any]

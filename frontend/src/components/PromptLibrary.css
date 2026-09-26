@@ -55,13 +55,13 @@
 .prompt-entry-edit-button,
 .prompt-entry-delete-button {
   position: absolute;
-  top: -10px;
-  width: 24px;
-  height: 24px;
+  top: -12px;
+  width: 28px;
+  height: 28px;
   background: white;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: 4px;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   line-height: 1;
   cursor: pointer;
   z-index: 1;
@@ -105,7 +105,7 @@
   height: 70px;
   font-family: inherit;
   font-size: 0.8rem;
-  padding: 10px 8px 8px;
+  padding: 18px 8px 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
   resize: none;

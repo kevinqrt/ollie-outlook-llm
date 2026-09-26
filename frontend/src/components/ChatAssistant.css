@@ -193,6 +193,28 @@
   background: var(--primary-dark);
 }
 
+.meeting-proposal-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.meeting-proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.meeting-proposal-actions .meeting-proposal-button {
+  margin-top: 0;
+}
+
+.meeting-proposal-done {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .message-bubble.user {
   align-self: flex-end;
   background-color: var(--primary);

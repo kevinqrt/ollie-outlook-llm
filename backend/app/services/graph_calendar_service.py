@@ -20,11 +20,20 @@ from app.services.graph_auth_service import GraphAuthError, GraphAuthService
 logger = logging.getLogger(__name__)
 
 GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
+_EVENT_FIELDS = "id,subject,start,end,location,organizer,isOrganizer,isAllDay,attendees,webLink"
+# Safety cap for calendarview paging (50 events per page).
+_MAX_PAGES = 20
 
 __all__ = ["CalendarServiceError", "GraphCalendarService"]
 
 
 def _parse_event(item: dict[str, Any]) -> CalendarEventSchema:
+    location = ((item.get("location") or {}).get("displayName") or "").strip()
+    attendees = [
+        address
+        for attendee in item.get("attendees") or []
+        if (address := (attendee.get("emailAddress") or {}).get("address"))
+    ]
     return CalendarEventSchema(
         id=item["id"],
         subject=item.get("subject") or "(Kein Betreff)",
@@ -32,6 +41,10 @@ def _parse_event(item: dict[str, Any]) -> CalendarEventSchema:
         end=datetime.fromisoformat(item["end"]["dateTime"]).replace(tzinfo=UTC),
         organizer=(item.get("organizer") or {}).get("emailAddress", {}).get("name"),
         is_organizer=bool(item.get("isOrganizer")),
+        location=location or None,
+        is_all_day=bool(item.get("isAllDay")),
+        attendees=attendees,
+        web_link=item.get("webLink"),
     )
 
 
@@ -62,12 +75,25 @@ def _daily_time_slots(
     return slots
 
 
+def _is_unsupported_for_account(response: httpx.Response) -> bool:
+    """Whether Graph rejected a request because the account type doesn't support it.
+
+    Personal Microsoft accounts get a 4xx for tenant-only features like
+    findMeetingTimes - in practice a 401 "UnknownError", even with a valid
+    token. A genuinely broken login fails the own-calendar fallback too.
+    """
+    return 400 <= response.status_code < 500
+
+
 class GraphCalendarService:
     """Wraps the Microsoft Graph Calendar REST API for the authenticated user."""
 
     def __init__(self, auth_service: GraphAuthService) -> None:
         self._auth_service = auth_service
         self._client = httpx.AsyncClient(base_url=GRAPH_BASE_URL, timeout=httpx.Timeout(30.0))
+        # Flipped once Graph rejects findMeetingTimes for this account, so later
+        # calls go straight to the own-calendar fallback.
+        self._meeting_times_supported = True
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -80,22 +106,33 @@ class GraphCalendarService:
         return {"Authorization": f"Bearer {token}", "Prefer": 'outlook.timezone="UTC"'}
 
     async def list_events(self, start: datetime, end: datetime) -> list[CalendarEventSchema]:
-        """List calendar events within [start, end)."""
+        """List calendar events within [start, end), following Graph's paging links."""
         headers = await self._auth_headers()
-        params = {
+        params: dict[str, str] | None = {
             "startDateTime": start.isoformat(),
             "endDateTime": end.isoformat(),
             "$orderby": "start/dateTime",
             "$top": "50",
+            "$select": _EVENT_FIELDS,
         }
+        url = "/me/calendarview"
+        items: list[dict[str, Any]] = []
         try:
-            response = await self._client.get("/me/calendarview", params=params, headers=headers)
-            response.raise_for_status()
+            for _ in range(_MAX_PAGES):
+                response = await self._client.get(url, params=params, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                items.extend(data.get("value", []))
+                next_link = data.get("@odata.nextLink")
+                if not next_link:
+                    break
+                # The next link already carries all query parameters.
+                url, params = next_link, None
         except httpx.HTTPError as exc:
             logger.error("Graph list_events failed: %s", exc)
             raise CalendarServiceError(f"Failed to list calendar events: {exc}") from exc
 
-        return [_parse_event(item) for item in response.json().get("value", [])]
+        return [_parse_event(item) for item in items]
 
     async def get_availability(
         self,
@@ -135,6 +172,10 @@ class GraphCalendarService:
         is set in that case so Graph's own default work-hours filter doesn't
         additionally intersect with our explicit, already-correct time slots.
         """
+        if not self._meeting_times_supported:
+            return await self._own_free_slots(
+                start, end, duration_minutes, max_candidates, daily_window
+            )
         headers = await self._auth_headers()
         rounded_start = _round_up_to_quarter_hour(start)
         if daily_window is not None:
@@ -165,6 +206,17 @@ class GraphCalendarService:
                 "/me/findMeetingTimes", json=payload, headers=headers
             )
             response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            if not _is_unsupported_for_account(exc.response):
+                logger.error("Graph find_meeting_times failed: %s", exc)
+                raise CalendarServiceError(f"Failed to find meeting times: {exc}") from exc
+            # Personal Microsoft accounts (outlook.com) don't support
+            # findMeetingTimes - fall back to the user's own free slots.
+            logger.info("findMeetingTimes not supported for this account, using own calendar.")
+            self._meeting_times_supported = False
+            return await self._own_free_slots(
+                start, end, duration_minutes, max_candidates, daily_window
+            )
         except httpx.HTTPError as exc:
             logger.error("Graph find_meeting_times failed: %s", exc)
             raise CalendarServiceError(f"Failed to find meeting times: {exc}") from exc
@@ -180,6 +232,21 @@ class GraphCalendarService:
                 confidence=float(item.get("confidence", 0.0)),
             )
             for item in response.json().get("meetingTimeSuggestions", [])
+        ]
+
+    async def _own_free_slots(
+        self,
+        start: datetime,
+        end: datetime,
+        duration_minutes: int,
+        max_candidates: int,
+        daily_window: tuple[int, int] | None,
+    ) -> list[MeetingTimeSuggestionSchema]:
+        """Free slots in the user's own calendar only - attendees are not checked."""
+        slots = await self.get_availability(start, end, duration_minutes, daily_window=daily_window)
+        return [
+            MeetingTimeSuggestionSchema(start=slot.start, end=slot.end, confidence=0.0)
+            for slot in slots[:max_candidates]
         ]
 
     async def create_event(

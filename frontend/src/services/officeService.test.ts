@@ -151,3 +151,115 @@ describe('OfficeService.insertText', () => {
     );
   });
 });
+
+describe('OfficeService.getMeetingContext', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('includes the sender and To/Cc without the own address in Read mode', async () => {
+    vi.stubGlobal('Office', {
+      context: {
+        mailbox: {
+          userProfile: { emailAddress: 'Me@example.com' },
+          item: {
+            subject: 'AW: Ja, wir können uns treffen',
+            from: {
+              displayName: 'Sören Müller',
+              emailAddress: 'Soeren@example.com',
+            },
+            to: [{ emailAddress: 'me@example.com' }],
+            cc: [
+              { emailAddress: 'alice@example.com' },
+              { emailAddress: 'soeren@example.com' },
+            ],
+            body: {},
+          },
+        },
+      },
+    });
+
+    const context = await new OfficeService().getMeetingContext();
+
+    expect(context).toEqual({
+      counterpartName: 'Sören',
+      participants: ['soeren@example.com', 'alice@example.com'],
+    });
+  });
+
+  it('takes the first name from "Nachname, Vorname" display names', async () => {
+    vi.stubGlobal('Office', {
+      context: {
+        mailbox: {
+          item: {
+            from: {
+              displayName: 'Müller, Sören',
+              emailAddress: 'soeren@example.com',
+            },
+            body: {},
+          },
+        },
+      },
+    });
+
+    const context = await new OfficeService().getMeetingContext();
+
+    expect(context.counterpartName).toBe('Sören');
+  });
+
+  it('returns an empty context when no item is open', async () => {
+    vi.stubGlobal('Office', { context: { mailbox: { item: undefined } } });
+
+    expect(await new OfficeService().getMeetingContext()).toEqual({
+      counterpartName: '',
+      participants: [],
+    });
+  });
+});
+
+describe('OfficeService.getConversationContext', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns conversation id and lower-cased sender in Read mode', () => {
+    vi.stubGlobal('Office', {
+      context: {
+        mailbox: {
+          item: {
+            conversationId: 'conv-1',
+            from: { emailAddress: 'Max@Example.com' },
+          },
+        },
+      },
+    });
+
+    expect(new OfficeService().getConversationContext()).toEqual({
+      conversationId: 'conv-1',
+      sender: 'max@example.com',
+    });
+  });
+
+  it('returns only the conversation id in Compose mode', () => {
+    vi.stubGlobal('Office', {
+      context: {
+        mailbox: {
+          item: {
+            conversationId: 'conv-1',
+            body: { setSelectedDataAsync: vi.fn() },
+          },
+        },
+      },
+    });
+
+    expect(new OfficeService().getConversationContext()).toEqual({
+      conversationId: 'conv-1',
+    });
+  });
+
+  it('returns nothing without an open item', () => {
+    vi.stubGlobal('Office', { context: { mailbox: { item: null } } });
+
+    expect(new OfficeService().getConversationContext()).toEqual({});
+  });
+});

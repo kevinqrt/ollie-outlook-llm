@@ -6,13 +6,18 @@ import type {
 import { useNotification } from '../context/NotificationContext';
 import {
   addKnownCalendar,
+  type CalendarConnection,
   checkIcsCalendarStatus,
+  connectGraphCalendar,
+  createCalendarEventFromProposal,
+  getCalendarConnection,
   listKnownCalendars,
   openCalendarComposeWindow,
   removeKnownCalendar,
   setSelfIcsUrl,
 } from '../services/calendarWorkflow';
 import { sendChatMessage } from '../services/chatWorkflow';
+import { officeService } from '../services/officeService';
 import './ChatAssistant.css';
 
 interface Message {
@@ -20,6 +25,8 @@ interface Message {
   role: 'user' | 'assistant' | 'error';
   content: string;
   meetingProposal?: MeetingProposalSchema | null;
+  /** Set once the proposal was created in the calendar (Graph only). */
+  createdEvent?: { webLink?: string | null } | null;
 }
 
 const STORAGE_KEY = 'ollie_chat_history';
@@ -36,6 +43,10 @@ export function ChatAssistant() {
   });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [calendarConnection, setCalendarConnection] =
+    useState<CalendarConnection | null>(null);
+  const [connectingCalendar, setConnectingCalendar] = useState(false);
+  const [creatingEventFor, setCreatingEventFor] = useState<string | null>(null);
   const [icsConfigured, setIcsConfigured] = useState<boolean | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selfUrlInput, setSelfUrlInput] = useState('');
@@ -64,19 +75,81 @@ export function ChatAssistant() {
   }, [messages, scrollToBottom]);
 
   useEffect(() => {
-    checkIcsCalendarStatus()
-      .then((configured) => {
-        setIcsConfigured(configured);
-        if (!configured) setSettingsOpen(true);
+    const loadIcsSettings = () => {
+      checkIcsCalendarStatus()
+        .then((configured) => {
+          setIcsConfigured(configured);
+          if (!configured) setSettingsOpen(true);
+        })
+        .catch(() => {
+          setIcsConfigured(false);
+          setSettingsOpen(true);
+        });
+      listKnownCalendars()
+        .then(setKnownCalendars)
+        .catch(() => setKnownCalendars([]));
+    };
+    getCalendarConnection()
+      .then((connection) => {
+        setCalendarConnection(connection);
+        if (connection.backend === 'ics') loadIcsSettings();
       })
       .catch(() => {
-        setIcsConfigured(false);
-        setSettingsOpen(true);
+        setCalendarConnection({ backend: 'ics', authenticated: false });
+        loadIcsSettings();
       });
-    listKnownCalendars()
-      .then(setKnownCalendars)
-      .catch(() => setKnownCalendars([]));
   }, []);
+
+  const isGraphCalendar = calendarConnection?.backend === 'graph';
+
+  const handleConnectCalendar = useCallback(async () => {
+    setConnectingCalendar(true);
+    try {
+      await connectGraphCalendar();
+      const connection = await getCalendarConnection();
+      setCalendarConnection(connection);
+      notify(
+        connection.authenticated
+          ? 'Outlook-Kalender verbunden.'
+          : 'Kalender wurde nicht verbunden.',
+        connection.authenticated ? 'success' : 'error'
+      );
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : 'Verbinden fehlgeschlagen.';
+      notify(msg, 'error');
+      console.error('Connect calendar error:', error);
+    } finally {
+      setConnectingCalendar(false);
+    }
+  }, [notify]);
+
+  const handleCreateEvent = useCallback(
+    async (messageId: string, proposal: MeetingProposalSchema) => {
+      setCreatingEventFor(messageId);
+      try {
+        const event = await createCalendarEventFromProposal(proposal);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId
+              ? { ...m, createdEvent: { webLink: event.webLink } }
+              : m
+          )
+        );
+        notify('Termin im Kalender eingetragen.', 'success');
+      } catch (error) {
+        const msg =
+          error instanceof Error
+            ? error.message
+            : 'Termin konnte nicht eingetragen werden.';
+        notify(msg, 'error');
+        console.error('Create calendar event error:', error);
+      } finally {
+        setCreatingEventFor(null);
+      }
+    },
+    [notify]
+  );
 
   const handleClearChat = () => {
     localStorage.removeItem(STORAGE_KEY);
@@ -139,9 +212,9 @@ export function ChatAssistant() {
   );
 
   const handleOpenAppointment = useCallback(
-    (proposal: MeetingProposalSchema) => {
+    async (proposal: MeetingProposalSchema) => {
       try {
-        openCalendarComposeWindow(proposal);
+        await openCalendarComposeWindow(proposal);
       } catch (error) {
         const msg =
           error instanceof Error
@@ -194,28 +267,52 @@ export function ChatAssistant() {
 
   return (
     <div className="chat-assistant">
-      <div className="calendar-status-bar">
-        {icsConfigured === null ? (
-          <span className="calendar-status-text">
-            Kalender-Status wird geprüft...
-          </span>
-        ) : icsConfigured ? (
-          <span className="calendar-status-text">📅 Kalender verbunden</span>
-        ) : (
-          <span className="calendar-status-text">
-            📅 Kein Kalender-Link hinterlegt
-          </span>
-        )}
-        <button
-          type="button"
-          className="text-button"
-          onClick={() => setSettingsOpen((open) => !open)}
-        >
-          {settingsOpen ? 'Schließen' : 'Kalender-Einstellungen'}
-        </button>
-      </div>
+      {isGraphCalendar ? (
+        <div className="calendar-status-bar">
+          {calendarConnection?.authenticated ? (
+            <span className="calendar-status-text">
+              📅✉️ Outlook verbunden (Kalender & Mails)
+            </span>
+          ) : (
+            <>
+              <span className="calendar-status-text">
+                📅✉️ Outlook nicht verbunden
+              </span>
+              <button
+                type="button"
+                className="text-button"
+                onClick={handleConnectCalendar}
+                disabled={connectingCalendar}
+              >
+                {connectingCalendar ? 'Verbinde...' : 'Verbinden'}
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="calendar-status-bar">
+          {icsConfigured === null ? (
+            <span className="calendar-status-text">
+              Kalender-Status wird geprüft...
+            </span>
+          ) : icsConfigured ? (
+            <span className="calendar-status-text">📅 Kalender verbunden</span>
+          ) : (
+            <span className="calendar-status-text">
+              📅 Kein Kalender-Link hinterlegt
+            </span>
+          )}
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => setSettingsOpen((open) => !open)}
+          >
+            {settingsOpen ? 'Schließen' : 'Kalender-Einstellungen'}
+          </button>
+        </div>
+      )}
 
-      {settingsOpen && (
+      {!isGraphCalendar && settingsOpen && (
         <div className="calendar-settings-panel">
           <p className="calendar-settings-hint">
             Kalender-Link findest du in Outlook im Web unter Einstellungen →
@@ -305,7 +402,25 @@ export function ChatAssistant() {
         {messages.map((msg) => (
           <div key={msg.id} className={`message-bubble ${msg.role}`}>
             <div className="message-content">{msg.content}</div>
-            {msg.meetingProposal && (
+            {msg.meetingProposal && isGraphCalendar && (
+              <MeetingProposalActions
+                proposal={msg.meetingProposal}
+                createdEvent={msg.createdEvent}
+                creating={creatingEventFor === msg.id}
+                onCreate={() =>
+                  handleCreateEvent(
+                    msg.id,
+                    msg.meetingProposal as MeetingProposalSchema
+                  )
+                }
+                onOpen={() =>
+                  handleOpenAppointment(
+                    msg.meetingProposal as MeetingProposalSchema
+                  )
+                }
+              />
+            )}
+            {msg.meetingProposal && !isGraphCalendar && (
               <button
                 type="button"
                 className="meeting-proposal-button"
@@ -356,6 +471,65 @@ export function ChatAssistant() {
           </svg>
         </button>
       </div>
+    </div>
+  );
+}
+
+interface MeetingProposalActionsProps {
+  proposal: MeetingProposalSchema;
+  createdEvent?: { webLink?: string | null } | null;
+  creating: boolean;
+  onCreate: () => void;
+  onOpen: () => void;
+}
+
+/**
+ * Confirm-before-create actions for a proposal on the Graph backend: the
+ * event is only created on an explicit click, and the label says when
+ * attendees will get a real invitation.
+ */
+function MeetingProposalActions({
+  proposal,
+  createdEvent,
+  creating,
+  onCreate,
+  onOpen,
+}: MeetingProposalActionsProps) {
+  if (createdEvent) {
+    const { webLink } = createdEvent;
+    return (
+      <div className="meeting-proposal-actions">
+        <span className="meeting-proposal-done">✓ Im Kalender eingetragen</span>
+        {webLink && (
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => officeService.openUrl(webLink)}
+          >
+            In Outlook öffnen
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const attendees = proposal.attendees ?? [];
+  const createLabel = attendees.length
+    ? `📅 Eintragen & Einladung an ${attendees.join(', ')} senden`
+    : '📅 Im Kalender eintragen';
+  return (
+    <div className="meeting-proposal-actions">
+      <button
+        type="button"
+        className="meeting-proposal-button"
+        onClick={onCreate}
+        disabled={creating}
+      >
+        {creating ? 'Trage ein...' : createLabel}
+      </button>
+      <button type="button" className="text-button" onClick={onOpen}>
+        Vorher bearbeiten
+      </button>
     </div>
   );
 }

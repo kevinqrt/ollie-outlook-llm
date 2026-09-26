@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     graph_client_id: str = ""
     graph_client_secret: str = ""
     graph_redirect_uri: str = "https://localhost:3000/auth-callback.html"
-    graph_scopes: list[str] = ["Calendars.ReadWrite", "User.Read"]
+    graph_scopes: list[str] = ["Calendars.ReadWrite", "Mail.Read", "User.Read"]
     token_cache_path: str = "./token_cache.json"  # noqa: S105
     calendar_mock_mode: bool = False
 

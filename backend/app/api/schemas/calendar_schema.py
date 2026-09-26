@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import Field
 
@@ -12,6 +13,10 @@ class CalendarEventSchema(BaseSchema):
     end: datetime
     organizer: str | None = None
     is_organizer: bool = False
+    location: str | None = None
+    is_all_day: bool = False
+    attendees: list[str] = Field(default_factory=list)
+    web_link: str | None = None
 
 
 class CalendarEventListSchema(BaseSchema):
@@ -29,6 +34,10 @@ class AvailabilitySchema(BaseSchema):
 
 class AuthStatusSchema(BaseSchema):
     authenticated: bool
+    backend: Literal["ics", "graph"] = Field(
+        default="graph",
+        description="Active calendar backend - the Graph login only applies to 'graph'.",
+    )
 
 
 class AuthUrlSchema(BaseSchema):

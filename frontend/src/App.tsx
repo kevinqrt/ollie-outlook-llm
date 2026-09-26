@@ -13,7 +13,11 @@ import { KnowledgeBase } from './components/KnowledgeBase';
 import { PromptLibrary } from './components/PromptLibrary';
 import { StyleRules } from './components/StyleRules';
 import { useNotification } from './context/NotificationContext';
-import { openCalendarComposeWindow } from './services/calendarWorkflow';
+import {
+  createCalendarEventFromProposal,
+  getCalendarConnection,
+  openCalendarComposeWindow,
+} from './services/calendarWorkflow';
 import { officeService } from './services/officeService';
 import {
   fetchPipelineSettings,
@@ -55,6 +59,10 @@ function App() {
   const [isCompose, setIsCompose] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [meetingProposal, setMeetingProposal] =
+    useState<MeetingProposalSchema | null>(null);
+  const [graphCalendarConnected, setGraphCalendarConnected] = useState(false);
+  const [creatingEvent, setCreatingEvent] = useState(false);
+  const [createdEventFor, setCreatedEventFor] =
     useState<MeetingProposalSchema | null>(null);
   const [isPlanning, setIsPlanning] = useState(false);
   const [steps, setSteps] = useState<PipelineStep[]>([]);
@@ -144,9 +152,40 @@ function App() {
     }
   }
 
-  function handleOpenAppointment(proposal: MeetingProposalSchema) {
+  useEffect(() => {
+    // Checked per proposal rather than once on mount: the user may have
+    // connected the calendar in the chat tab in the meantime.
+    if (!meetingProposal) return;
+    getCalendarConnection()
+      .then((connection) =>
+        setGraphCalendarConnected(
+          connection.backend === 'graph' && connection.authenticated
+        )
+      )
+      .catch(() => setGraphCalendarConnected(false));
+  }, [meetingProposal]);
+
+  async function handleCreateEvent(proposal: MeetingProposalSchema) {
+    setCreatingEvent(true);
     try {
-      openCalendarComposeWindow(proposal);
+      await createCalendarEventFromProposal(proposal);
+      setCreatedEventFor(proposal);
+      notify('Termin im Kalender eingetragen.', 'success');
+    } catch (error) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : 'Termin konnte nicht eingetragen werden.';
+      notify(msg, 'error');
+      console.error('Create calendar event error:', error);
+    } finally {
+      setCreatingEvent(false);
+    }
+  }
+
+  async function handleOpenAppointment(proposal: MeetingProposalSchema) {
+    try {
+      await openCalendarComposeWindow(proposal);
     } catch (error) {
       const msg =
         error instanceof Error
@@ -409,13 +448,34 @@ function App() {
                   {isPending ? 'Generiere...' : 'Antwort einfügen'}
                 </button>
 
+                {meetingProposal && graphCalendarConnected && (
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={
+                      creatingEvent || createdEventFor === meetingProposal
+                    }
+                    onClick={() => handleCreateEvent(meetingProposal)}
+                  >
+                    {createdEventFor === meetingProposal
+                      ? '✓ Im Kalender eingetragen'
+                      : creatingEvent
+                        ? 'Trage ein...'
+                        : meetingProposal.attendees?.length
+                          ? '📅 Direkt eintragen & Einladung senden'
+                          : '📅 Direkt im Kalender eintragen'}
+                  </button>
+                )}
+
                 {meetingProposal && (
                   <button
                     className="secondary-button"
                     type="button"
                     onClick={() => handleOpenAppointment(meetingProposal)}
                   >
-                    📅 Termin im Kalender öffnen
+                    {graphCalendarConnected
+                      ? 'In Outlook bearbeiten'
+                      : '📅 Termin im Kalender öffnen'}
                   </button>
                 )}
 

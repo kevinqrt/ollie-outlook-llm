@@ -49,9 +49,16 @@ export async function runReplyWorkflow(
 
     const content = await officeService.getBodyText();
     const attendees = await officeService.getRecipients();
+    const { conversationId, sender } = officeService.getConversationContext();
 
     const { stream } = await streamEmailSuggestion({
-      body: { emailContent: content, attendees, clarificationAnswer },
+      body: {
+        emailContent: content,
+        attendees,
+        conversationId,
+        sender,
+        clarificationAnswer,
+      },
     });
 
     let finalReply: string | undefined;

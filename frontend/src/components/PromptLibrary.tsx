@@ -69,6 +69,14 @@ export function PromptLibrary({ onSelect, onBack }: PromptLibraryProps) {
     setEditingText('');
   }
 
+  function handleDiscardDraft(localId: string) {
+    setDrafts((prev) => prev.filter((d) => d.localId !== localId));
+    if (editingId === localId) {
+      setEditingId(null);
+      setEditingText('');
+    }
+  }
+
   function handleStartEdit(id: string, currentText: string) {
     setEditingId(id);
     setEditingText(currentText);
@@ -172,19 +180,21 @@ export function PromptLibrary({ onSelect, onBack }: PromptLibraryProps) {
                   <button
                     type="button"
                     className="prompt-entry-delete-button"
-                    aria-label="Löschen"
+                    aria-label="Prompt löschen"
+                    title="Prompt löschen"
                     disabled={deletingId !== null}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleRequestDelete(p.id);
                     }}
                   >
-                    ✕
+                    🗑
                   </button>
                   <button
                     type="button"
                     className={`prompt-entry-edit-button ${isEditing ? 'is-saving' : ''}`}
                     aria-label={isEditing ? 'Speichern' : 'Bearbeiten'}
+                    title={isEditing ? 'Speichern' : 'Bearbeiten'}
                     disabled={saving && !isEditing}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -240,8 +250,22 @@ export function PromptLibrary({ onSelect, onBack }: PromptLibraryProps) {
           <div key={d.localId} className="prompt-entry">
             <button
               type="button"
+              className="prompt-entry-delete-button"
+              aria-label="Entwurf verwerfen"
+              title="Entwurf verwerfen"
+              disabled={saving}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDiscardDraft(d.localId);
+              }}
+            >
+              🗑
+            </button>
+            <button
+              type="button"
               className="prompt-entry-edit-button is-saving"
               aria-label="Speichern"
+              title="Speichern"
               disabled={saving}
               onClick={(e) => {
                 e.stopPropagation();

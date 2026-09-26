@@ -38,6 +38,12 @@ def graph_client(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Generator[TestCli
     """
     monkeypatch.setattr(settings, "calendar_mock_mode", False)
     monkeypatch.setattr(settings, "calendar_backend", "graph")
+    # Never talk to the developer's real Microsoft account from tests, even
+    # when the local .env contains real Graph credentials.
+    monkeypatch.setattr(settings, "graph_client_id", "")
+    monkeypatch.setattr(settings, "graph_client_secret", "")
+    monkeypatch.setattr(settings, "graph_tenant_id", "")
+    monkeypatch.setattr(settings, "token_cache_path", str(tmp_path / "token_cache.json"))
     monkeypatch.setattr(
         settings, "pipeline_settings_path", str(tmp_path / "pipeline_settings.json")
     )

@@ -106,6 +106,25 @@ export class OfficeService {
   }
 
   /**
+   * Identifies the open mail's thread for loading earlier mails as reply
+   * context: the conversation id (Read and Compose mode) and, in Read mode,
+   * the sender's address as fallback when there is no conversation yet.
+   */
+  public getConversationContext(): {
+    conversationId?: string;
+    sender?: string;
+  } {
+    const item = Office.context.mailbox.item;
+    if (!item) return {};
+    const conversationId = item.conversationId || undefined;
+    if (this.isComposeMode()) return { conversationId };
+    const sender = (
+      item as Office.MessageRead
+    ).from?.emailAddress?.toLowerCase();
+    return { conversationId, sender: sender || undefined };
+  }
+
+  /**
    * Returns the email addresses in To/Cc (minus the signed-in user's own
    * address), used to check everyone's calendar availability. Handles both
    * Read mode (synchronous arrays) and Compose mode (async Recipients).

@@ -34,7 +34,7 @@
           "chat"
         ],
         "summary": "Classical LLM chat",
-        "description": "Provide a classical chat interface with history and RAG context.\n\nIf the latest user message contains a meeting request, the reply is\naugmented with real calendar availability and a concrete meeting proposal.",
+        "description": "Provide a classical chat interface with history and RAG context.\n\nIf the latest user message contains a meeting request, the reply is\naugmented with real calendar availability and a concrete meeting proposal.\nAn overview of the upcoming calendar is always included, so general\nquestions can take the user's schedule into account too. Questions about\nmails get matching mails from the user's mailbox (Graph backend only).",
         "operationId": "postChat",
         "requestBody": {
           "content": {
@@ -86,7 +86,7 @@
           "email"
         ],
         "summary": "Generate AI email suggestion with live pipeline progress",
-        "description": "Generate a reply suggestion, streaming each pipeline step as it completes.\n\nIf the email contains a meeting request and the calendar is connected, the\npipeline is augmented with real availability, and the final `done` event\ncarries a concrete meeting proposal.\n\nThe system prompt, tone and whether the pipeline may ask a clarifying question\nbefore answering come from the user-configurable pipeline settings; style\nrules learned from earlier user corrections are appended to the prompt.",
+        "description": "Generate a reply suggestion, streaming each pipeline step as it completes.\n\nIf the email contains a meeting request and the calendar is connected, the\npipeline is augmented with real availability, and the final `done` event\ncarries a concrete meeting proposal.\n\nThe system prompt, tone and whether the pipeline may ask a clarifying question\nbefore answering come from the user-configurable pipeline settings; style\nrules learned from earlier user corrections are appended to the prompt.\n\nExcerpts from the knowledge base matching the email are passed along as\nadditional context, so e.g. a question about the school rules is answered\nfrom the uploaded document instead of left open. With the Graph backend,\nearlier mails of the same conversation (or sender) are added too.",
         "operationId": "streamEmailSuggestion",
         "requestBody": {
           "content": {
@@ -968,6 +968,56 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Create a calendar event from a confirmed meeting proposal",
+        "description": "Create the event in the user's calendar - only after the user confirmed it.\n\nAttendees receive a real invitation from Outlook. Only supported by the\nGraph backend; published ICS feeds are read-only.",
+        "operationId": "createCalendarEvent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeetingProposalSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarEventSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Calendar cannot create events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/calendar/meeting-times": {
@@ -1258,6 +1308,16 @@
           "authenticated": {
             "type": "boolean",
             "title": "Authenticated"
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "ics",
+              "graph"
+            ],
+            "title": "Backend",
+            "description": "Active calendar backend - the Graph login only applies to 'graph'.",
+            "default": "graph"
           }
         },
         "type": "object",
@@ -1344,6 +1404,40 @@
             "type": "boolean",
             "title": "Isorganizer",
             "default": false
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "isAllDay": {
+            "type": "boolean",
+            "title": "Isallday",
+            "default": false
+          },
+          "attendees": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Attendees"
+          },
+          "webLink": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weblink"
           }
         },
         "type": "object",
@@ -1516,6 +1610,30 @@
                 "alice@contoso.com"
               ]
             ]
+          },
+          "conversationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversationid",
+            "description": "Outlook conversation id of the open mail, used to load earlier mails of the same thread as context (Graph backend only)."
+          },
+          "sender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender",
+            "description": "Sender address of the open mail - fallback for loading earlier mails when the conversation id is unavailable."
           },
           "clarificationAnswer": {
             "anyOf": [

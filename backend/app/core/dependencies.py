@@ -8,8 +8,10 @@ from app.pipeline.prompt_builder import DEFAULT_SYSTEM_PROMPT
 from app.services.calendar_mock_service import MockCalendarService, MockGraphAuthService
 from app.services.graph_auth_service import GraphAuthService
 from app.services.graph_calendar_service import GraphCalendarService
+from app.services.graph_mail_service import GraphMailService
 from app.services.ics_calendar_service import IcsCalendarService, IcsCalendarStore
 from app.services.llm_service import LlmService
+from app.services.mail_context_service import MailContextService
 from app.services.pipeline_settings_service import PipelineSettingsStore
 from app.services.scheduling_service import SchedulingService
 from app.services.style_rules_service import StyleRulesStore
@@ -29,6 +31,8 @@ class ServiceContainer:
         self.graph_auth_service: GraphAuthService | None = None
         self.graph_calendar_service: CalendarService | None = None
         self.scheduling_service: SchedulingService | None = None
+        self.mail_service: GraphMailService | None = None
+        self.mail_context_service: MailContextService | None = None
         self.pipeline_settings_service: PipelineSettingsStore | None = None
         self.style_rules_service: StyleRulesStore | None = None
 
@@ -50,6 +54,10 @@ class ServiceContainer:
         elif settings.calendar_backend == "graph":
             self.graph_auth_service = GraphAuthService()
             self.graph_calendar_service = GraphCalendarService(self.graph_auth_service)
+            self.mail_service = GraphMailService(self.graph_auth_service)
+            self.mail_context_service = MailContextService(
+                llm_service=self.llm_service, mail_service=self.mail_service
+            )
         else:
             self.graph_calendar_service = IcsCalendarService(
                 IcsCalendarStore(settings.ics_store_path)
@@ -64,11 +72,15 @@ class ServiceContainer:
         logger.info("Cleaning up services in container...")
         if self.graph_calendar_service is not None:
             await self.graph_calendar_service.aclose()
+        if self.mail_service is not None:
+            await self.mail_service.aclose()
         self.vector_store = None
         self.llm_service = None
         self.graph_auth_service = None
         self.graph_calendar_service = None
         self.scheduling_service = None
+        self.mail_service = None
+        self.mail_context_service = None
         self.pipeline_settings_service = None
         self.style_rules_service = None
 
@@ -99,11 +111,21 @@ def get_graph_auth_service() -> GraphAuthService:
     return container.graph_auth_service
 
 
+def get_optional_graph_auth_service() -> GraphAuthService | None:
+    """The Graph auth service, or None when the ICS calendar backend is active."""
+    return container.graph_auth_service
+
+
 def get_graph_calendar_service() -> CalendarService:
     """Dependency to retrieve the active calendar service (ICS, Graph, or mock)."""
     if container.graph_calendar_service is None:
         raise RuntimeError("Calendar service is not initialized.")
     return container.graph_calendar_service
+
+
+def get_optional_mail_context_service() -> MailContextService | None:
+    """The mailbox context service, or None unless the Graph backend is active."""
+    return container.mail_context_service
 
 
 def get_scheduling_service() -> SchedulingService:
@@ -131,7 +153,13 @@ def get_style_rules_service() -> StyleRulesStore:
 VectorStoreServiceDep = Annotated[VectorStoreService, Depends(get_vector_store_service)]
 LlmServiceDep = Annotated[LlmService, Depends(get_llm_service)]
 GraphAuthServiceDep = Annotated[GraphAuthService, Depends(get_graph_auth_service)]
+OptionalGraphAuthServiceDep = Annotated[
+    GraphAuthService | None, Depends(get_optional_graph_auth_service)
+]
 GraphCalendarServiceDep = Annotated[CalendarService, Depends(get_graph_calendar_service)]
+OptionalMailContextServiceDep = Annotated[
+    MailContextService | None, Depends(get_optional_mail_context_service)
+]
 SchedulingServiceDep = Annotated[SchedulingService, Depends(get_scheduling_service)]
 PipelineSettingsServiceDep = Annotated[
     PipelineSettingsStore, Depends(get_pipeline_settings_service)

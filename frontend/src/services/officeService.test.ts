@@ -216,3 +216,50 @@ describe('OfficeService.getMeetingContext', () => {
     });
   });
 });
+
+describe('OfficeService.getConversationContext', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns conversation id and lower-cased sender in Read mode', () => {
+    vi.stubGlobal('Office', {
+      context: {
+        mailbox: {
+          item: {
+            conversationId: 'conv-1',
+            from: { emailAddress: 'Max@Example.com' },
+          },
+        },
+      },
+    });
+
+    expect(new OfficeService().getConversationContext()).toEqual({
+      conversationId: 'conv-1',
+      sender: 'max@example.com',
+    });
+  });
+
+  it('returns only the conversation id in Compose mode', () => {
+    vi.stubGlobal('Office', {
+      context: {
+        mailbox: {
+          item: {
+            conversationId: 'conv-1',
+            body: { setSelectedDataAsync: vi.fn() },
+          },
+        },
+      },
+    });
+
+    expect(new OfficeService().getConversationContext()).toEqual({
+      conversationId: 'conv-1',
+    });
+  });
+
+  it('returns nothing without an open item', () => {
+    vi.stubGlobal('Office', { context: { mailbox: { item: null } } });
+
+    expect(new OfficeService().getConversationContext()).toEqual({});
+  });
+});

@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteAllStyleRulesData, DeleteAllStyleRulesResponses, DeleteCalendarIcsKnownData, DeleteCalendarIcsKnownErrors, DeleteCalendarIcsKnownResponses, DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, DeleteSavedPromptData, DeleteSavedPromptErrors, DeleteSavedPromptResponses, DeleteStyleRuleData, DeleteStyleRuleErrors, DeleteStyleRuleResponses, GetCalendarAuthLoginData, GetCalendarAuthLoginErrors, GetCalendarAuthLoginResponses, GetCalendarAuthStatusData, GetCalendarAuthStatusResponses, GetCalendarEventsData, GetCalendarEventsErrors, GetCalendarEventsResponses, GetCalendarIcsKnownData, GetCalendarIcsKnownErrors, GetCalendarIcsKnownResponses, GetCalendarIcsStatusData, GetCalendarIcsStatusErrors, GetCalendarIcsStatusResponses, GetHealthData, GetHealthResponses, GetPipelineModelsData, GetPipelineModelsResponses, GetPipelineSettingsData, GetPipelineSettingsResponses, GetSavedPromptsData, GetSavedPromptsResponses, GetStyleRulesData, GetStyleRulesResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostCalendarAuthCallbackData, PostCalendarAuthCallbackErrors, PostCalendarAuthCallbackResponses, PostCalendarIcsKnownData, PostCalendarIcsKnownErrors, PostCalendarIcsKnownResponses, PostCalendarIcsSelfData, PostCalendarIcsSelfErrors, PostCalendarIcsSelfResponses, PostCalendarMeetingTimesData, PostCalendarMeetingTimesErrors, PostCalendarMeetingTimesResponses, PostChatData, PostChatErrors, PostChatResponses, PostCorrectionData, PostCorrectionErrors, PostCorrectionResponses, PostReplyRevisionData, PostReplyRevisionErrors, PostReplyRevisionResponses, PostSavedPromptData, PostSavedPromptErrors, PostSavedPromptResponses, PutPipelineSettingsData, PutPipelineSettingsErrors, PutPipelineSettingsResponses, PutSavedPromptData, PutSavedPromptErrors, PutSavedPromptResponses, PutStyleRulesSettingsData, PutStyleRulesSettingsErrors, PutStyleRulesSettingsResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses, SummarizeEmailThreadData, SummarizeEmailThreadErrors, SummarizeEmailThreadResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
+import type { CreateCalendarEventData, CreateCalendarEventErrors, CreateCalendarEventResponses, DeleteAllStyleRulesData, DeleteAllStyleRulesResponses, DeleteCalendarIcsKnownData, DeleteCalendarIcsKnownErrors, DeleteCalendarIcsKnownResponses, DeleteDocumentKnowledgeDocumentsFilenameDeleteData, DeleteDocumentKnowledgeDocumentsFilenameDeleteErrors, DeleteDocumentKnowledgeDocumentsFilenameDeleteResponses, DeleteSavedPromptData, DeleteSavedPromptErrors, DeleteSavedPromptResponses, DeleteStyleRuleData, DeleteStyleRuleErrors, DeleteStyleRuleResponses, GetCalendarAuthLoginData, GetCalendarAuthLoginErrors, GetCalendarAuthLoginResponses, GetCalendarAuthStatusData, GetCalendarAuthStatusResponses, GetCalendarEventsData, GetCalendarEventsErrors, GetCalendarEventsResponses, GetCalendarIcsKnownData, GetCalendarIcsKnownErrors, GetCalendarIcsKnownResponses, GetCalendarIcsStatusData, GetCalendarIcsStatusErrors, GetCalendarIcsStatusResponses, GetHealthData, GetHealthResponses, GetPipelineModelsData, GetPipelineModelsResponses, GetPipelineSettingsData, GetPipelineSettingsResponses, GetSavedPromptsData, GetSavedPromptsResponses, GetStyleRulesData, GetStyleRulesResponses, ListDocumentsKnowledgeDocumentsGetData, ListDocumentsKnowledgeDocumentsGetResponses, PostCalendarAuthCallbackData, PostCalendarAuthCallbackErrors, PostCalendarAuthCallbackResponses, PostCalendarIcsKnownData, PostCalendarIcsKnownErrors, PostCalendarIcsKnownResponses, PostCalendarIcsSelfData, PostCalendarIcsSelfErrors, PostCalendarIcsSelfResponses, PostCalendarMeetingTimesData, PostCalendarMeetingTimesErrors, PostCalendarMeetingTimesResponses, PostChatData, PostChatErrors, PostChatResponses, PostCorrectionData, PostCorrectionErrors, PostCorrectionResponses, PostReplyRevisionData, PostReplyRevisionErrors, PostReplyRevisionResponses, PostSavedPromptData, PostSavedPromptErrors, PostSavedPromptResponses, PutPipelineSettingsData, PutPipelineSettingsErrors, PutPipelineSettingsResponses, PutSavedPromptData, PutSavedPromptErrors, PutSavedPromptResponses, PutStyleRulesSettingsData, PutStyleRulesSettingsErrors, PutStyleRulesSettingsResponses, SearchKnowledgeKnowledgeSearchGetData, SearchKnowledgeKnowledgeSearchGetErrors, SearchKnowledgeKnowledgeSearchGetResponses, StreamEmailSuggestionData, StreamEmailSuggestionErrors, StreamEmailSuggestionResponse, StreamEmailSuggestionResponses, SummarizeEmailThreadData, SummarizeEmailThreadErrors, SummarizeEmailThreadResponses, UploadPdfKnowledgePdfPostData, UploadPdfKnowledgePdfPostErrors, UploadPdfKnowledgePdfPostResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -32,6 +32,9 @@ export const getHealth = <ThrowOnError extends boolean = false>(options?: Option
  *
  * If the latest user message contains a meeting request, the reply is
  * augmented with real calendar availability and a concrete meeting proposal.
+ * An overview of the upcoming calendar is always included, so general
+ * questions can take the user's schedule into account too. Questions about
+ * mails get matching mails from the user's mailbox (Graph backend only).
  */
 export const postChat = <ThrowOnError extends boolean = false>(options: Options<PostChatData, ThrowOnError>) => (options.client ?? client).post<PostChatResponses, PostChatErrors, ThrowOnError>({
     url: '/chat',
@@ -54,6 +57,11 @@ export const postChat = <ThrowOnError extends boolean = false>(options: Options<
  * The system prompt, tone and whether the pipeline may ask a clarifying question
  * before answering come from the user-configurable pipeline settings; style
  * rules learned from earlier user corrections are appended to the prompt.
+ *
+ * Excerpts from the knowledge base matching the email are passed along as
+ * additional context, so e.g. a question about the school rules is answered
+ * from the uploaded document instead of left open. With the Graph backend,
+ * earlier mails of the same conversation (or sender) are added too.
  */
 export const streamEmailSuggestion = <ThrowOnError extends boolean = false>(options: Options<StreamEmailSuggestionData, ThrowOnError, StreamEmailSuggestionResponse>) => (options.client ?? client).sse.post<StreamEmailSuggestionResponses, StreamEmailSuggestionErrors, ThrowOnError>({
     url: '/email/suggestion/stream',
@@ -255,6 +263,23 @@ export const getCalendarAuthStatus = <ThrowOnError extends boolean = false>(opti
  * List calendar events in a date range
  */
 export const getCalendarEvents = <ThrowOnError extends boolean = false>(options: Options<GetCalendarEventsData, ThrowOnError>) => (options.client ?? client).get<GetCalendarEventsResponses, GetCalendarEventsErrors, ThrowOnError>({ url: '/calendar/events', ...options });
+
+/**
+ * Create a calendar event from a confirmed meeting proposal
+ *
+ * Create the event in the user's calendar - only after the user confirmed it.
+ *
+ * Attendees receive a real invitation from Outlook. Only supported by the
+ * Graph backend; published ICS feeds are read-only.
+ */
+export const createCalendarEvent = <ThrowOnError extends boolean = false>(options: Options<CreateCalendarEventData, ThrowOnError>) => (options.client ?? client).post<CreateCalendarEventResponses, CreateCalendarEventErrors, ThrowOnError>({
+    url: '/calendar/events',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Find meeting times that work for all given attendees

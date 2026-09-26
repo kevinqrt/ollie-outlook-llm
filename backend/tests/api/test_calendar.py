@@ -42,7 +42,7 @@ def test_post_calendar_auth_callback_success(graph_client: TestClient) -> None:
         response = graph_client.post("/calendar/auth/callback", json={"code": "auth-code"})
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == {"authenticated": True}
+    assert response.json() == {"authenticated": True, "backend": "graph"}
     mock_acquire.assert_called_once_with("auth-code")
 
 
@@ -65,7 +65,63 @@ def test_get_calendar_auth_status(graph_client: TestClient) -> None:
         response = graph_client.get("/calendar/auth/status")
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json() == {"authenticated": False}
+    assert response.json() == {"authenticated": False, "backend": "graph"}
+
+
+def test_get_calendar_auth_status_in_ics_mode(client: TestClient) -> None:
+    response = client.get("/calendar/auth/status")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == {"authenticated": False, "backend": "ics"}
+
+
+def test_create_calendar_event_success(graph_client: TestClient) -> None:
+    created = CalendarEventSchema(
+        id="event-1",
+        subject="Sport",
+        start=datetime(2026, 8, 3, 10, 0, tzinfo=UTC),
+        end=datetime(2026, 8, 3, 10, 30, tzinfo=UTC),
+        web_link="https://outlook.live.com/calendar/item/event-1",
+    )
+
+    with patch(
+        "app.services.graph_calendar_service.GraphCalendarService.create_event"
+    ) as mock_create:
+        mock_create.return_value = created
+
+        response = graph_client.post(
+            "/calendar/events",
+            json={
+                "subject": "Sport",
+                "body": "Laufen",
+                "start": "2026-08-03T10:00:00Z",
+                "end": "2026-08-03T10:30:00Z",
+                "attendees": ["alice@example.com"],
+            },
+        )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["webLink"] == "https://outlook.live.com/calendar/item/event-1"
+    mock_create.assert_called_once_with(
+        "Sport",
+        datetime(2026, 8, 3, 10, 0, tzinfo=UTC),
+        datetime(2026, 8, 3, 10, 30, tzinfo=UTC),
+        attendees=["alice@example.com"],
+        body="Laufen",
+    )
+
+
+def test_create_calendar_event_in_ics_mode_is_unavailable(client: TestClient) -> None:
+    response = client.post(
+        "/calendar/events",
+        json={
+            "subject": "Sport",
+            "start": "2026-08-03T10:00:00Z",
+            "end": "2026-08-03T10:30:00Z",
+        },
+    )
+
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
 def test_get_calendar_events_success(graph_client: TestClient) -> None:

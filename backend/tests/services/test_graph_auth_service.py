@@ -150,7 +150,16 @@ def test_acquire_token_by_code_failure_raises(auth_service):
 
 def test_is_authenticated_true_with_accounts(auth_service):
     auth_service._app.get_accounts.return_value = [{"username": "a@b.com"}]
+    auth_service._app.acquire_token_silent.return_value = {"access_token": "token"}
     assert auth_service.is_authenticated() is True
+
+
+def test_is_authenticated_false_when_token_lacks_new_scope(auth_service):
+    # E.g. Mail.Read was added after the login: the cached refresh token
+    # can't be redeemed for it, so the user has to log in again.
+    auth_service._app.get_accounts.return_value = [{"username": "a@b.com"}]
+    auth_service._app.acquire_token_silent.return_value = None
+    assert auth_service.is_authenticated() is False
 
 
 def test_is_authenticated_false_without_accounts(auth_service):

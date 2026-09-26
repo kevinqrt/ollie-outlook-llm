@@ -9,6 +9,7 @@ vi.mock('./officeService', () => ({
     showNotification: vi.fn(),
     getBodyText: vi.fn(),
     getRecipients: vi.fn().mockResolvedValue([]),
+    getConversationContext: vi.fn().mockReturnValue({}),
     insertText: vi.fn(),
     replaceInsertedText: vi.fn(),
     displayReply: vi.fn(),
@@ -199,6 +200,27 @@ describe('replyWorkflow', () => {
 describe('reviseReply', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('sends the conversation id and sender for earlier-mail context', async () => {
+    vi.mocked(officeService.getBodyText).mockResolvedValue('Email content');
+    vi.mocked(officeService.isComposeMode).mockReturnValue(true);
+    vi.mocked(officeService.getConversationContext).mockReturnValue({
+      conversationId: 'conv-1',
+      sender: 'max@example.com',
+    });
+    vi.mocked(streamEmailSuggestion).mockResolvedValue({
+      stream: asyncStream([{ type: 'done', finalReply: 'Suggested reply' }]),
+    } as never);
+
+    await runReplyWorkflow();
+
+    expect(streamEmailSuggestion).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        conversationId: 'conv-1',
+        sender: 'max@example.com',
+      }),
+    });
   });
 
   it('sends mail, previous reply and feedback and replaces the reply in the draft', async () => {

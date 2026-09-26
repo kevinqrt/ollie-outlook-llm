@@ -199,3 +199,36 @@ def test_stream_email_suggestion_skips_empty_knowledge_base(client: TestClient) 
         _read_events(client, {"emailContent": "Testmail"})
 
     assert "Wissensbasis" not in captured["extra_context"]
+
+
+def test_stream_email_suggestion_includes_earlier_mails_with_graph_backend(
+    graph_client: TestClient,
+) -> None:
+    captured: dict = {}
+
+    async def _capturing_pipeline(_email_text: str, **kwargs: str) -> AsyncIterator[PipelineEvent]:
+        captured.update(kwargs)
+        yield DoneEvent(final_reply="Fertige Antwort")
+
+    with (
+        patch("app.api.router.run_pipeline", _capturing_pipeline),
+        patch(
+            "app.services.scheduling_service.SchedulingService.augment_with_availability"
+        ) as mock_augment,
+        patch(
+            "app.services.mail_context_service.MailContextService.build_reply_context"
+        ) as mock_reply_context,
+    ):
+        mock_augment.return_value = AvailabilityAugmentation()
+        mock_reply_context.return_value = "\n\nFruehere Mail von Max"
+        _read_events(
+            graph_client,
+            {
+                "emailContent": "Wie besprochen?",
+                "conversationId": "conv-1",
+                "sender": "max@example.com",
+            },
+        )
+
+    mock_reply_context.assert_called_once_with("conv-1", "max@example.com")
+    assert "\n\nFruehere Mail von Max" in captured["extra_context"]

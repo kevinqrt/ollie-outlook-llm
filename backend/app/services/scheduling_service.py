@@ -1,12 +1,13 @@
 import json
 import logging
 import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from app.api.schemas.calendar_schema import MeetingProposalSchema
+from app.api.schemas.calendar_schema import CalendarEventSchema, MeetingProposalSchema
 from app.api.schemas.chat_schema import ChatMessageSchema
 from app.core.datetime_utils import LOCAL_TZ, WEEKDAYS_DE, format_datetime_de
 from app.services.availability import CalendarServiceError
@@ -54,6 +55,9 @@ MAX_SUBJECT_WORDS = 8
 MAX_SUGGESTED_SLOTS = 3
 MAX_LISTED_EVENTS = 10
 BUSINESS_HOURS_START = 9
+OVERVIEW_DAYS = 14
+MAX_OVERVIEW_EVENTS = 60
+OVERVIEW_CACHE_SECONDS = 300
 
 # Local (Europe/Berlin) hour-of-day ranges for each recognized time-of-day label.
 TIME_OF_DAY_RANGES: dict[str, tuple[int, int]] = {
@@ -227,6 +231,24 @@ class AvailabilityAugmentation:
         return self.proposal
 
 
+def _format_overview_line(event: CalendarEventSchema) -> str:
+    if event.is_all_day:
+        # Graph returns all-day events as floating midnight, so the UTC date is
+        # the calendar date - converting to local time would not change it
+        # anyway, but it would show a meaningless 02:00.
+        day = event.start.date()
+        when = f"{WEEKDAYS_DE[day.weekday()]}, {day.strftime('%d.%m.%Y')} ganztaegig"
+    else:
+        when = (
+            f"{format_datetime_de(event.start)}"
+            f"-{event.end.astimezone(LOCAL_TZ).strftime('%H:%M')} Uhr"
+        )
+    line = f"- {when}: {event.subject}"
+    if event.location:
+        line += f" ({event.location})"
+    return line
+
+
 class SchedulingService:
     """Detects meeting requests in text and augments replies with real availability.
 
@@ -240,6 +262,47 @@ class SchedulingService:
     def __init__(self, llm_service: LlmService, calendar_service: CalendarService) -> None:
         self._llm_service = llm_service
         self._calendar_service = calendar_service
+        self._overview_cache: tuple[float, str] | None = None
+
+    async def build_calendar_overview(self) -> str:
+        """Upcoming events (today plus OVERVIEW_DAYS) as compact prompt context.
+
+        Added to every chat message, so the assistant knows the user's calendar
+        even when a message isn't detected as a calendar question. Cached for
+        OVERVIEW_CACHE_SECONDS so not every message hits the calendar backend.
+        Returns "" if the calendar is not connected or unavailable.
+        """
+        if (
+            self._overview_cache is not None
+            and time.monotonic() - self._overview_cache[0] < OVERVIEW_CACHE_SECONDS
+        ):
+            return self._overview_cache[1]
+
+        today = datetime.now(LOCAL_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+        window_start = today.astimezone(UTC)
+        window_end = window_start + timedelta(days=OVERVIEW_DAYS)
+        try:
+            events = await self._calendar_service.list_events(window_start, window_end)
+        except (CalendarServiceError, GraphAuthError):
+            logger.info("Skipping calendar overview: calendar unavailable.")
+            return ""
+
+        sorted_events = sorted(events, key=lambda e: e.start)
+        lines = [_format_overview_line(event) for event in sorted_events[:MAX_OVERVIEW_EVENTS]]
+        remaining = len(sorted_events) - MAX_OVERVIEW_EVENTS
+        if remaining > 0:
+            lines.append(f"- (und {remaining} weitere Termine)")
+        body = "\n".join(lines) if lines else "- keine Termine"
+        overview = (
+            f"\n\nKalender des Nutzers fuer die naechsten {OVERVIEW_DAYS} Tage "
+            f"(nutze ihn, wenn die Frage Termine oder Zeitplanung betrifft):\n{body}"
+        )
+        self._overview_cache = (time.monotonic(), overview)
+        return overview
+
+    def invalidate_calendar_overview(self) -> None:
+        """Drop the cached overview, e.g. after an event was created."""
+        self._overview_cache = None
 
     async def augment_with_availability(
         self, text: str, attendees: list[str] | None = None, model: str | None = None

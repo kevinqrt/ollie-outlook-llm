@@ -110,3 +110,54 @@ def test_post_chat_service_error(client: TestClient) -> None:
 
     assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert "RAG Service request failed" in response.json()["detail"]
+
+
+def test_post_chat_includes_calendar_overview(client: TestClient) -> None:
+    with (
+        patch("app.services.llm_service.LlmService.chat") as mock_chat,
+        patch(
+            "app.services.scheduling_service.SchedulingService.augment_with_availability"
+        ) as mock_augment,
+        patch(
+            "app.services.scheduling_service.SchedulingService.build_calendar_overview"
+        ) as mock_overview,
+    ):
+        mock_augment.return_value = AvailabilityAugmentation(context="\n\nFreie Slots")
+        mock_overview.return_value = "\n\nKalender: - Mo 10:00 Training"
+        mock_chat.return_value = "Du hast Montag Training."
+
+        response = client.post(
+            "/chat", json={"messages": [{"role": "user", "content": "Was steht an?"}]}
+        )
+
+    assert response.status_code == status.HTTP_200_OK
+    _, call_kwargs = mock_chat.call_args
+    assert call_kwargs["extra_context"] == "\n\nKalender: - Mo 10:00 Training\n\nFreie Slots"
+
+
+def test_post_chat_includes_mail_context_with_graph_backend(graph_client: TestClient) -> None:
+    with (
+        patch("app.services.llm_service.LlmService.chat") as mock_chat,
+        patch(
+            "app.services.scheduling_service.SchedulingService.augment_with_availability"
+        ) as mock_augment,
+        patch(
+            "app.services.scheduling_service.SchedulingService.build_calendar_overview"
+        ) as mock_overview,
+        patch(
+            "app.services.mail_context_service.MailContextService.build_chat_context"
+        ) as mock_mail,
+    ):
+        mock_augment.return_value = AvailabilityAugmentation()
+        mock_overview.return_value = "\n\nKalender"
+        mock_mail.return_value = "\n\nMails von Max"
+        mock_chat.return_value = "Max hat geschrieben."
+
+        response = graph_client.post(
+            "/chat", json={"messages": [{"role": "user", "content": "Was schrieb Max?"}]}
+        )
+
+    assert response.status_code == status.HTTP_200_OK
+    mock_mail.assert_called_once_with("Was schrieb Max?", model="llama3.2:3b")
+    _, call_kwargs = mock_chat.call_args
+    assert call_kwargs["extra_context"] == "\n\nKalender\n\nMails von Max"

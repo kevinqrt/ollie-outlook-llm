@@ -392,3 +392,118 @@ async def test_create_event_http_error_raises_calendar_error(calendar_service):
             start=datetime(2026, 8, 3, 10, 0, tzinfo=UTC),
             end=datetime(2026, 8, 3, 11, 0, tzinfo=UTC),
         )
+
+
+def _json_response(data: dict) -> MagicMock:
+    response = MagicMock()
+    response.json.return_value = data
+    response.raise_for_status.return_value = None
+    return response
+
+
+@pytest.mark.anyio
+async def test_list_events_follows_next_link(calendar_service):
+    next_link = "https://graph.microsoft.com/v1.0/me/calendarview?$skip=50"
+    second_event = {**RAW_EVENT, "id": "event-2"}
+    calendar_service._client.get = AsyncMock(
+        side_effect=[
+            _json_response({"value": [RAW_EVENT], "@odata.nextLink": next_link}),
+            _json_response({"value": [second_event]}),
+        ]
+    )
+
+    events = await calendar_service.list_events(
+        datetime(2026, 8, 3, tzinfo=UTC), datetime(2026, 8, 17, tzinfo=UTC)
+    )
+
+    assert [e.id for e in events] == ["event-1", "event-2"]
+    second_call = calendar_service._client.get.call_args_list[1]
+    assert second_call.args[0] == next_link
+    assert second_call.kwargs["params"] is None
+
+
+@pytest.mark.anyio
+async def test_list_events_parses_location_all_day_attendees_and_link(calendar_service):
+    raw_event = {
+        **RAW_EVENT,
+        "location": {"displayName": "Sporthalle"},
+        "isAllDay": True,
+        "attendees": [{"emailAddress": {"address": "bob@example.com"}}],
+        "webLink": "https://outlook.live.com/calendar/item/event-1",
+    }
+    calendar_service._client.get = AsyncMock(return_value=_json_response({"value": [raw_event]}))
+
+    events = await calendar_service.list_events(
+        datetime(2026, 8, 3, tzinfo=UTC), datetime(2026, 8, 4, tzinfo=UTC)
+    )
+
+    assert events[0].location == "Sporthalle"
+    assert events[0].is_all_day is True
+    assert events[0].attendees == ["bob@example.com"]
+    assert events[0].web_link == "https://outlook.live.com/calendar/item/event-1"
+
+
+@pytest.mark.anyio
+async def test_find_meeting_times_falls_back_to_own_calendar_for_personal_accounts(
+    calendar_service,
+):
+    request = httpx.Request("POST", "https://graph.microsoft.com/v1.0/me/findMeetingTimes")
+    rejected = httpx.Response(400, request=request, json={"error": {"code": "ErrorInvalidUser"}})
+    calendar_service._client.post = AsyncMock(return_value=rejected)
+    calendar_service._client.get = AsyncMock(return_value=_json_response({"value": []}))
+
+    suggestions = await calendar_service.find_meeting_times(
+        ["alice@example.com"],
+        datetime(2026, 8, 3, 8, 0, tzinfo=UTC),
+        datetime(2026, 8, 3, 12, 0, tzinfo=UTC),
+        duration_minutes=30,
+        max_candidates=2,
+    )
+
+    assert len(suggestions) == 2
+    assert suggestions[0].start == datetime(2026, 8, 3, 8, 0, tzinfo=UTC)
+    calendar_service._client.get.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_find_meeting_times_falls_back_on_401_from_personal_account(calendar_service):
+    request = httpx.Request("POST", "https://graph.microsoft.com/v1.0/me/findMeetingTimes")
+    rejected = httpx.Response(401, request=request, json={"error": {"code": "UnknownError"}})
+    calendar_service._client.post = AsyncMock(return_value=rejected)
+    calendar_service._client.get = AsyncMock(return_value=_json_response({"value": []}))
+
+    suggestions = await calendar_service.find_meeting_times(
+        ["alice@example.com"],
+        datetime(2026, 8, 3, 8, 0, tzinfo=UTC),
+        datetime(2026, 8, 3, 12, 0, tzinfo=UTC),
+    )
+
+    assert suggestions
+
+
+@pytest.mark.anyio
+async def test_find_meeting_times_skips_graph_after_first_fallback(calendar_service):
+    request = httpx.Request("POST", "https://graph.microsoft.com/v1.0/me/findMeetingTimes")
+    rejected = httpx.Response(401, request=request, json={"error": {"code": "UnknownError"}})
+    calendar_service._client.post = AsyncMock(return_value=rejected)
+    calendar_service._client.get = AsyncMock(return_value=_json_response({"value": []}))
+    window = (datetime(2026, 8, 3, 8, 0, tzinfo=UTC), datetime(2026, 8, 3, 12, 0, tzinfo=UTC))
+
+    await calendar_service.find_meeting_times(["alice@example.com"], *window)
+    await calendar_service.find_meeting_times(["alice@example.com"], *window)
+
+    calendar_service._client.post.assert_called_once()
+    assert calendar_service._client.get.await_count == 2
+
+
+@pytest.mark.anyio
+async def test_find_meeting_times_server_error_raises_calendar_error(calendar_service):
+    request = httpx.Request("POST", "https://graph.microsoft.com/v1.0/me/findMeetingTimes")
+    calendar_service._client.post = AsyncMock(return_value=httpx.Response(503, request=request))
+
+    with pytest.raises(CalendarServiceError, match="Failed to find meeting times"):
+        await calendar_service.find_meeting_times(
+            ["alice@example.com"],
+            datetime(2026, 8, 3, 8, 0, tzinfo=UTC),
+            datetime(2026, 8, 3, 12, 0, tzinfo=UTC),
+        )

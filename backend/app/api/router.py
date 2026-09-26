@@ -11,10 +11,12 @@ from app.api.schemas.calendar_schema import (
     AuthStatusSchema,
     AuthUrlSchema,
     CalendarEventListSchema,
+    CalendarEventSchema,
     FindMeetingTimesRequestSchema,
     IcsStatusSchema,
     KnownCalendarListSchema,
     KnownCalendarSchema,
+    MeetingProposalSchema,
     MeetingTimeSuggestionListSchema,
     SetKnownIcsUrlRequestSchema,
     SetSelfIcsUrlRequestSchema,
@@ -55,6 +57,8 @@ from app.core.dependencies import (
     GraphAuthServiceDep,
     GraphCalendarServiceDep,
     LlmServiceDep,
+    OptionalGraphAuthServiceDep,
+    OptionalMailContextServiceDep,
     PipelineSettingsServiceDep,
     SchedulingServiceDep,
     StyleRulesServiceDep,
@@ -131,11 +135,15 @@ async def post_chat(
     service: LlmServiceDep,
     scheduling_service: SchedulingServiceDep,
     pipeline_settings_service: PipelineSettingsServiceDep,
+    mail_context_service: OptionalMailContextServiceDep,
 ) -> ChatResponseSchema:
     """Provide a classical chat interface with history and RAG context.
 
     If the latest user message contains a meeting request, the reply is
     augmented with real calendar availability and a concrete meeting proposal.
+    An overview of the upcoming calendar is always included, so general
+    questions can take the user's schedule into account too. Questions about
+    mails get matching mails from the user's mailbox (Graph backend only).
     """
     latest_user_message = next(
         (m.content for m in reversed(payload.messages) if m.role == "user"), ""
@@ -145,8 +153,16 @@ async def post_chat(
         augmentation = await scheduling_service.augment_with_availability(
             latest_user_message, model=model
         )
+        calendar_overview = await scheduling_service.build_calendar_overview()
+        mail_context = (
+            await mail_context_service.build_chat_context(latest_user_message, model=model)
+            if mail_context_service is not None
+            else ""
+        )
         reply = await service.chat(
-            payload.messages, extra_context=augmentation.context, model=model
+            payload.messages,
+            extra_context=f"{calendar_overview}{augmentation.context}{mail_context}",
+            model=model,
         )
         return ChatResponseSchema(reply=reply, meeting_proposal=augmentation.proposal)
     except LlmServiceError as exc:
@@ -171,6 +187,7 @@ async def stream_email_suggestion(
     pipeline_settings_service: PipelineSettingsServiceDep,
     style_rules_service: StyleRulesServiceDep,
     vector_store_service: VectorStoreServiceDep,
+    mail_context_service: OptionalMailContextServiceDep,
 ) -> StreamingResponse:
     """Generate a reply suggestion, streaming each pipeline step as it completes.
 
@@ -184,7 +201,8 @@ async def stream_email_suggestion(
 
     Excerpts from the knowledge base matching the email are passed along as
     additional context, so e.g. a question about the school rules is answered
-    from the uploaded document instead of left open.
+    from the uploaded document instead of left open. With the Graph backend,
+    earlier mails of the same conversation (or sender) are added too.
     """
     model_choice = _resolve_model_choice(pipeline_settings_service)
     augmentation = await scheduling_service.augment_with_availability(
@@ -200,12 +218,18 @@ async def stream_email_suggestion(
         ),
     )
 
+    mail_context = (
+        await mail_context_service.build_reply_context(payload.conversation_id, payload.sender)
+        if mail_context_service is not None
+        else ""
+    )
+
     system_prompt = _build_system_prompt(pipeline_settings_service, style_rules_service)
 
     async def event_stream() -> AsyncIterator[str]:
         async for event in run_pipeline(
             payload.email_content,
-            extra_context=f"{kb_context}{augmentation.context}",
+            extra_context=f"{kb_context}{mail_context}{augmentation.context}",
             system_prompt=system_prompt,
             allow_clarifying_questions=pipeline_settings_service.get_allow_clarifying_questions(),
             clarification_answer=payload.clarification_answer,
@@ -635,8 +659,10 @@ async def post_calendar_auth_callback(
     tags=["calendar"],
     operation_id="getCalendarAuthStatus",
 )
-async def get_calendar_auth_status(service: GraphAuthServiceDep) -> AuthStatusSchema:
-    return AuthStatusSchema(authenticated=service.is_authenticated())
+async def get_calendar_auth_status(service: OptionalGraphAuthServiceDep) -> AuthStatusSchema:
+    if service is None:
+        return AuthStatusSchema(authenticated=False, backend="ics")
+    return AuthStatusSchema(authenticated=service.is_authenticated(), backend="graph")
 
 
 @api_router.get(
@@ -660,6 +686,42 @@ async def get_calendar_events(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
+
+
+@api_router.post(
+    "/calendar/events",
+    response_model=CalendarEventSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a calendar event from a confirmed meeting proposal",
+    responses={503: {"model": ErrorResponseSchema, "description": "Calendar cannot create events"}},
+    tags=["calendar"],
+    operation_id="createCalendarEvent",
+)
+async def create_calendar_event(
+    payload: MeetingProposalSchema,
+    service: GraphCalendarServiceDep,
+    scheduling_service: SchedulingServiceDep,
+) -> CalendarEventSchema:
+    """Create the event in the user's calendar - only after the user confirmed it.
+
+    Attendees receive a real invitation from Outlook. Only supported by the
+    Graph backend; published ICS feeds are read-only.
+    """
+    try:
+        event = await service.create_event(
+            payload.subject,
+            payload.start,
+            payload.end,
+            attendees=payload.attendees,
+            body=payload.body,
+        )
+    except CalendarServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    scheduling_service.invalidate_calendar_overview()
+    return event
 
 
 @api_router.post(

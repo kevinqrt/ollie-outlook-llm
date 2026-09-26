@@ -96,9 +96,19 @@ class GraphAuthService:
             )
 
     def is_authenticated(self) -> bool:
+        """Whether a token covering ALL configured scopes can be obtained.
+
+        Checking only for a cached account isn't enough: after a scope was
+        added (e.g. Mail.Read), the cached refresh token doesn't cover it
+        yet, so the user must log in again to consent.
+        """
         if not self._is_configured():
             return False
-        return bool(self._get_app().get_accounts())
+        try:
+            self.get_valid_access_token()
+        except GraphAuthError:
+            return False
+        return True
 
     def get_valid_access_token(self) -> str:
         """Return a valid access token, refreshing it silently if needed.

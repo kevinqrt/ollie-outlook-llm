@@ -819,3 +819,74 @@ def test_proposal_matching_reply_uses_later_text_if_reply_names_no_slot():
 
 def test_proposal_matching_reply_without_proposal_is_none():
     assert AvailabilityAugmentation().proposal_matching_reply("12:00 Uhr") is None
+
+
+@pytest.mark.anyio
+async def test_calendar_overview_lists_events_with_location_and_all_day(
+    scheduling_service, mock_calendar
+):
+    mock_calendar.list_events = AsyncMock(
+        return_value=[
+            CalendarEventSchema(
+                id="event-2",
+                subject="Training",
+                start=datetime(2026, 8, 4, 16, 0, tzinfo=UTC),
+                end=datetime(2026, 8, 4, 17, 30, tzinfo=UTC),
+                location="Sporthalle",
+            ),
+            CalendarEventSchema(
+                id="event-1",
+                subject="Urlaub",
+                start=datetime(2026, 8, 3, 0, 0, tzinfo=UTC),
+                end=datetime(2026, 8, 4, 0, 0, tzinfo=UTC),
+                is_all_day=True,
+            ),
+        ]
+    )
+
+    overview = await scheduling_service.build_calendar_overview()
+
+    lines = overview.strip().splitlines()
+    assert "naechsten 14 Tage" in lines[0]
+    assert lines[1] == "- Montag, 03.08.2026 ganztaegig: Urlaub"
+    assert lines[2] == "- Dienstag, 04.08.2026 18:00-19:30 Uhr: Training (Sporthalle)"
+
+
+@pytest.mark.anyio
+async def test_calendar_overview_is_cached_until_invalidated(scheduling_service, mock_calendar):
+    mock_calendar.list_events = AsyncMock(return_value=[])
+
+    first = await scheduling_service.build_calendar_overview()
+    await scheduling_service.build_calendar_overview()
+    assert mock_calendar.list_events.await_count == 1
+    assert "keine Termine" in first
+
+    scheduling_service.invalidate_calendar_overview()
+    await scheduling_service.build_calendar_overview()
+    assert mock_calendar.list_events.await_count == 2
+
+
+@pytest.mark.anyio
+async def test_calendar_overview_caps_event_count(scheduling_service, mock_calendar):
+    mock_calendar.list_events = AsyncMock(
+        return_value=[
+            CalendarEventSchema(
+                id=f"event-{i}",
+                subject=f"Termin {i}",
+                start=datetime(2026, 8, 3, 8, tzinfo=UTC) + i * timedelta(hours=1),
+                end=datetime(2026, 8, 3, 8, 30, tzinfo=UTC) + i * timedelta(hours=1),
+            )
+            for i in range(65)
+        ]
+    )
+
+    overview = await scheduling_service.build_calendar_overview()
+
+    assert overview.strip().splitlines()[-1] == "- (und 5 weitere Termine)"
+
+
+@pytest.mark.anyio
+async def test_calendar_overview_empty_when_calendar_unavailable(scheduling_service, mock_calendar):
+    mock_calendar.list_events = AsyncMock(side_effect=GraphAuthError("Not authenticated."))
+
+    assert await scheduling_service.build_calendar_overview() == ""
